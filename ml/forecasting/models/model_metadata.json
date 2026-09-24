@@ -1,0 +1,42 @@
+{
+    "model": "XGBoost",
+    "dataset": "UCI Beijing PM2.5",
+    "target": "PM2.5 next hour",
+    "forecast_horizon": "1 hour",
+    "training_samples": 33234,
+    "testing_samples": 8309,
+    "features": [
+        "pm2.5",
+        "DEWP",
+        "TEMP",
+        "PRES",
+        "Iws",
+        "Is",
+        "Ir",
+        "hour_sin",
+        "hour_cos",
+        "month_sin",
+        "month_cos",
+        "wind_NE",
+        "wind_NW",
+        "wind_SE",
+        "wind_cv"
+    ],
+    "mae": 12.26229705532502,
+    "rmse": 22.028273973929785,
+    "r2": 0.9454630817310609,
+    "feature_importance": {
+        "pm2.5": 0.6695998907089233,
+        "DEWP": 0.0373435877263546,
+        "TEMP": 0.02463502436876297,
+        "PRES": 0.013099770992994308,
+        "Iws": 0.02674945630133152,
+        "Is": 0.007109958678483963,
+        "Ir": 0.008139457553625107,
+        "hour_sin": 0.011377430520951748,
+        "hour_cos": 0.007784263696521521,
+        "month_sin": 0.025394944474101067,
+        "month_cos": 0.04173729568719864
+    },
+    "split_method": "chronological 80/20"
+}
