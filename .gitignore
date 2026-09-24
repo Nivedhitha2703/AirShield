@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# Virtual environment
+.venv/
+
+# Environment files
+.env
+
+# Runtime image uploads
+member1/data/uploads/
+
+# Local test image
+member1/data/test_image.jpg

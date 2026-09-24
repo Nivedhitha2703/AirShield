@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>AirShield — Environmental Intelligence</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<div class="atmosphere">
+    <div class="fog fog-one"></div>
+    <div class="fog fog-two"></div>
+    <div class="fog fog-three"></div>
+</div>
+
+<div class="cursor-glow"></div>
+
+<header class="topbar">
+
+    <div class="brand">
+        <div class="brand-mark">A</div>
+
+        <div>
+            <strong>AirShield</strong>
+            <span>ENVIRONMENTAL INTELLIGENCE</span>
+        </div>
+    </div>
+
+    <div class="system-status">
+        <i></i>
+        SYSTEM OPERATIONAL
+    </div>
+
+    <div class="clock" id="clock">--:--:--</div>
+
+</header>
+
+
+<main>
+
+<section class="hero">
+
+    <div class="hero-copy">
+
+        <div class="eyebrow">
+            <span></span>
+            MEMBER 01 / POLLUTION INTELLIGENCE
+        </div>
+
+        <h1>
+            See what the
+            <em>air</em>
+            can't hide.
+        </h1>
+
+        <p>
+            AirShield transforms environmental sensor signals
+            and visual intelligence into real-time pollution insights.
+        </p>
+
+        <div class="hero-actions">
+
+            <button class="primary-btn" onclick="scrollToSensors()">
+                Explore sensor network
+                <span>↗</span>
+            </button>
+
+            <button class="ghost-btn" onclick="loadData()">
+                Sync live data
+            </button>
+
+        </div>
+
+    </div>
+
+
+    <div class="orbital-system">
+
+        <div class="orbit orbit-one"></div>
+        <div class="orbit orbit-two"></div>
+
+        <div class="earth-core">
+            <div class="core-ring"></div>
+            <span>AIR</span>
+        </div>
+
+        <div class="node node-one">S1</div>
+        <div class="node node-two">S2</div>
+        <div class="node node-three">S3</div>
+        <div class="node node-four">S4</div>
+
+    </div>
+
+</section>
+
+
+<section class="command-grid" id="sensors">
+
+    <div class="section-label">
+        <span>01</span>
+        LIVE ATMOSPHERIC READOUT
+    </div>
+
+
+    <div class="metrics">
+
+        <article class="metric-card">
+            <span>ACTIVE SENSORS</span>
+            <strong id="sensorCount">--</strong>
+            <small>environmental nodes</small>
+        </article>
+
+        <article class="metric-card danger">
+            <span>AI ANOMALIES</span>
+            <strong id="anomalyCount">--</strong>
+            <small>detected signals</small>
+        </article>
+
+        <article class="metric-card warning">
+            <span>POLLUTION EVENTS</span>
+            <strong id="eventCount">--</strong>
+            <small>identified events</small>
+        </article>
+
+        <article class="metric-card">
+            <span>SYSTEM STATE</span>
+            <strong id="systemState">LIVE</strong>
+            <small>FastAPI connection</small>
+        </article>
+
+    </div>
+
+
+    <div class="intelligence-panel">
+
+        <div class="panel-head">
+            <div>
+                <span class="panel-index">AIR / 01</span>
+                <h2>Atmospheric intelligence</h2>
+            </div>
+
+            <div class="live-pill">
+                <i></i> LIVE
+            </div>
+        </div>
+
+
+        <div class="signal-field">
+
+            <div class="signal-line line-one"></div>
+            <div class="signal-line line-two"></div>
+            <div class="signal-line line-three"></div>
+
+            <div class="signal-text">
+                <span>PM2.5</span>
+                <strong id="pm25">--</strong>
+                <small>μg/m³</small>
+            </div>
+
+            <div class="signal-wave"></div>
+
+        </div>
+
+    </div>
+
+
+    <div class="event-panel">
+
+        <div class="panel-head">
+            <div>
+                <span class="panel-index">AI / 02</span>
+                <h2>Pollution intelligence</h2>
+            </div>
+        </div>
+
+        <div id="eventsList" class="events-list">
+            <div class="loading">Scanning environmental data...</div>
+        </div>
+
+    </div>
+
+</section>
+
+
+<section class="image-zone">
+
+    <div class="section-label">
+        <span>02</span>
+        VISUAL INTELLIGENCE
+    </div>
+
+    <div class="image-card">
+
+        <div class="image-content">
+
+            <span class="panel-index">VISION / ANALYSIS</span>
+
+            <h2>
+                Detect what
+                <br>
+                sensors can't see.
+            </h2>
+
+            <p>
+                Upload an environmental image and let AirShield
+                analyse haze, brightness, contrast and visual indicators.
+            </p>
+
+            <label class="upload-btn">
+                Select environmental image
+                <input type="file" id="imageInput" accept="image/*">
+            </label>
+
+            <div id="imageResult" class="analysis-result">
+                Waiting for image analysis
+            </div>
+
+        </div>
+
+        <div class="visual-preview" id="visualPreview">
+
+            <div class="scan-grid"></div>
+
+            <div class="scanner"></div>
+
+            <span>VISUAL FIELD</span>
+
+        </div>
+
+    </div>
+
+</section>
+
+
+<section class="closing">
+
+    <div class="closing-orbit"></div>
+
+    <span>03 / MISSION</span>
+
+    <h2>
+        Detect early.
+        <br>
+        Understand faster.
+        <br>
+        <em>Protect cleaner air.</em>
+    </h2>
+
+</section>
+
+</main>
+
+
+<footer>
+    <span>AIRSHIELD / POLLUTION INTELLIGENCE</span>
+    <span>AI · SENSOR · VISION</span>
+</footer>
+
+<script src="app.js"></script>
+
+</body>
+</html>
