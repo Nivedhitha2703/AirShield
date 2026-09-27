@@ -9,6 +9,12 @@ NUM_READINGS = 200
 
 # Generate normal environmental data
 data = {
+    "timestamp": pd.date_range(
+    start="2026-09-26 12:00:00",
+    periods=NUM_READINGS,
+    freq="1min"
+),
+
     "sensor_id": [f"S{i % 10 + 1}" for i in range(NUM_READINGS)],
 
     "latitude": np.random.uniform(10.90, 11.05, NUM_READINGS),

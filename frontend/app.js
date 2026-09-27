@@ -1,4 +1,4 @@
-const API = "http://127.0.0.1:8000";
+const API = "http://192.168.0.246:8000";
 
 const $ = id => document.getElementById(id);
 
@@ -230,23 +230,74 @@ function renderEvents(events) {
 }
 
 
-// Image preview
-$("imageInput").addEventListener("change", event => {
+// Image upload + AI analysis
+$("imageInput").addEventListener("change", async event => {
 
     const file = event.target.files[0];
 
     if (!file) return;
 
     const preview = $("visualPreview");
+    const result = $("imageResult");
 
+    // Show selected image
     const url = URL.createObjectURL(file);
 
     preview.style.background =
-        `linear-gradient(180deg, transparent, rgba(0,0,0,.5)),
+        `linear-gradient(180deg, transparent, rgba(0,0,0,.55)),
          url("${url}") center/cover`;
 
-    $("imageResult").textContent =
-        `${file.name} ready for AI analysis`;
+    result.textContent =
+        "Uploading image for AI analysis...";
+
+    try {
+
+        const formData = new FormData();
+
+        // api.py expects the uploaded file as "file"
+        formData.append("file", file);
+
+        const response = await fetch(
+            `${API}/analyze-image`,
+            {
+                method: "POST",
+                body: formData
+            }
+        );
+
+        if (!response.ok) {
+            throw new Error("Image analysis failed");
+        }
+
+        const data = await response.json();
+
+        console.log("Image analysis:", data);
+
+        if (!data.success) {
+            result.textContent =
+                data.error || "Image analysis failed.";
+            return;
+        }
+
+        result.innerHTML = `
+            <strong>AI VISUAL ANALYSIS</strong><br><br>
+            Haze Level: ${data.haze_level}<br>
+            Visual Score: ${data.visual_score}/100<br>
+            Brightness: ${data.brightness}<br>
+            Contrast: ${data.contrast}<br>
+            Saturation: ${data.saturation}<br>
+            Edge Density: ${data.edge_density}<br><br>
+            Assessment: ${data.visual_assessment}
+        `;
+
+    } catch (error) {
+
+        console.error("Image analysis error:", error);
+
+        result.textContent =
+            "Unable to connect to AirShield visual intelligence API.";
+
+    }
 
 });
 

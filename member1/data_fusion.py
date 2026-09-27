@@ -47,7 +47,10 @@ df = pd.read_csv(INPUT_FILE)
 
 # Keep only detected anomalies
 events = df[df["status"] == "ANOMALY"].copy()
-
+events["event_id"] = [
+    f"EVT-{i:04d}"
+    for i in range(1, len(events) + 1)
+]
 # Determine risk level
 events["risk_level"] = events.apply(classify_risk, axis=1)
 
@@ -63,7 +66,9 @@ events["location"] = (
 
 # Select important information for the AirShield platform
 events = events[
-    [
+    [ 
+        "event_id",
+        "timestamp",
         "sensor_id",
         "latitude",
         "longitude",

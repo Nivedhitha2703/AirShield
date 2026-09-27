@@ -53,14 +53,6 @@ app.add_middleware(
 # Allows Member 2 frontend to communicate with API
 # --------------------------------------------------
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
 
 # --------------------------------------------------
 # Health check
