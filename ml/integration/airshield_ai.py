@@ -1,5 +1,6 @@
 import joblib
 import numpy as np
+import pandas as pd
 import shap
 
 from ml.common.config import (
@@ -7,9 +8,7 @@ from ml.common.config import (
     get_risk_level
 )
 
-from ml.common.utils import (
-    calculate_risk_score
-)
+from ml.common.utils import calculate_risk_score
 
 from ml.source_analysis.source_classifier import (
     PollutionSourceClassifier
@@ -29,130 +28,169 @@ from ml.exposure.exposure_model import (
 
 
 class AirShieldAI:
-    """
-    Main AirShield Member 2 AI engine.
-
-    Combines:
-
-    1. PM2.5 forecasting
-    2. Risk classification
-    3. SHAP explainability
-    4. Source analysis
-    5. Pollution trajectory
-    6. Plume simulation
-    7. Exposure intelligence
-
-    This class provides a single interface for
-    frontend/backend integration.
-    """
 
     def __init__(self):
-
-        # ----------------------------------
-        # Load trained forecasting model
-        # ----------------------------------
 
         if not FORECAST_MODEL_FILE.exists():
 
             raise FileNotFoundError(
-
                 "Forecast model not found. "
-                "Run: "
-                "python -m ml.forecasting.train"
+                "Run: python -m ml.forecasting.train"
             )
 
+        # Load trained forecasting model
         self.forecast_model = joblib.load(
             FORECAST_MODEL_FILE
         )
 
-        # ----------------------------------
-        # Initialize SHAP explainability
-        # ----------------------------------
-
-        self.shap_explainer = (
-            shap.TreeExplainer(
-                self.forecast_model
-            )
+        # SHAP explainer
+        self.shap_explainer = shap.TreeExplainer(
+            self.forecast_model
         )
 
-        # ----------------------------------
         # Initialize AI modules
-        # ----------------------------------
+        self.source_classifier = PollutionSourceClassifier()
 
-        self.source_classifier = (
-            PollutionSourceClassifier()
-        )
+        self.trajectory_model = TrajectoryModel()
 
-        self.trajectory_model = (
-            TrajectoryModel()
-        )
+        self.plume_simulator = PlumeSimulator()
 
-        self.plume_simulator = (
-            PlumeSimulator()
-        )
+        self.exposure_model = ExposureModel()
 
-        self.exposure_model = (
-            ExposureModel()
-        )
 
-    # ==================================================
-    # CREATE FORECAST FEATURES
-    # ==================================================
+    # =========================================================
+    # FORECAST FEATURE CREATION
+    # =========================================================
 
-    def create_forecast_features(
-        self,
-        event
-    ):
-        """
-        Convert an AirShield event into
-        the exact 15 features expected
-        by the trained XGBoost model.
-        """
+    def create_forecast_features(self, event):
 
         pm25 = float(
             event["pm25"]
         )
 
         dewp = float(
-            event["DEWP"]
+            event.get("DEWP", 20.0)
         )
 
         temp = float(
-            event["TEMP"]
+            event.get(
+                "TEMP",
+                event.get("temperature", 30.0)
+            )
         )
 
         pres = float(
-            event["PRES"]
+            event.get("PRES", 1008.0)
         )
 
         wind_speed = float(
-            event["Iws"]
+            event.get(
+                "Iws",
+                event.get("wind_speed", 0.0)
+            )
         )
 
         snow = float(
-            event["Is"]
+            event.get("Is", 0.0)
         )
 
         rain = float(
-            event["Ir"]
+            event.get("Ir", 0.0)
         )
 
-        hour = int(
-            event["hour"]
-        )
 
-        month = int(
-            event["month"]
-        )
+        # =====================================================
+        # TIME FEATURES
+        # =====================================================
+
+        if "hour" in event:
+
+            hour = int(
+                event["hour"]
+            )
+
+        else:
+
+            timestamp = pd.Timestamp(
+                event["timestamp"]
+            )
+
+            hour = int(
+                timestamp.hour
+            )
+
+
+        if "month" in event:
+
+            month = int(
+                event["month"]
+            )
+
+        else:
+
+            timestamp = pd.Timestamp(
+                event["timestamp"]
+            )
+
+            month = int(
+                timestamp.month
+            )
+
+
+        # =====================================================
+        # WIND DIRECTION
+        # =====================================================
 
         wind_direction = event.get(
             "wind_direction",
             "NW"
         )
 
-        # ----------------------------------
-        # Cyclical time features
-        # ----------------------------------
+
+        # Member 1 provides wind direction
+        # as degrees, while the forecasting
+        # model expects categories.
+
+        if isinstance(
+            wind_direction,
+            (
+                int,
+                float,
+                np.integer,
+                np.floating
+            )
+        ):
+
+            degrees = float(
+                wind_direction
+            ) % 360
+
+
+            if degrees >= 315 or degrees < 45:
+
+                wind_direction = "NE"
+
+            elif degrees < 135:
+
+                wind_direction = "SE"
+
+            elif degrees < 225:
+
+                wind_direction = "cv"
+
+            else:
+
+                wind_direction = "NW"
+
+
+        wind_direction = str(
+            wind_direction
+        )
+
+
+        # =====================================================
+        # CYCLICAL TIME FEATURES
+        # =====================================================
 
         hour_sin = np.sin(
             2 * np.pi * hour / 24
@@ -170,9 +208,10 @@ class AirShieldAI:
             2 * np.pi * month / 12
         )
 
-        # ----------------------------------
-        # Wind one-hot encoding
-        # ----------------------------------
+
+        # =====================================================
+        # WIND ONE-HOT FEATURES
+        # =====================================================
 
         wind_NE = (
             1
@@ -198,69 +237,46 @@ class AirShieldAI:
             else 0
         )
 
-        # ----------------------------------
-        # Final 15-feature vector
-        # ----------------------------------
+
+        # =====================================================
+        # FINAL FEATURE VECTOR
+        # =====================================================
 
         features = [
 
             pm25,
-
             dewp,
-
             temp,
-
             pres,
-
             wind_speed,
-
             snow,
-
             rain,
 
             hour_sin,
-
             hour_cos,
 
             month_sin,
-
             month_cos,
 
             wind_NE,
-
             wind_NW,
-
             wind_SE,
-
             wind_cv
+
         ]
+
 
         return np.array(
             features,
             dtype=float
         ).reshape(1, -1)
 
-    # ==================================================
+
+    # =========================================================
     # SHAP EXPLAINABILITY
-    # ==================================================
+    # =========================================================
 
-    def explain_prediction(
-        self,
-        features
-    ):
-        """
-        Generate SHAP feature contributions
-        for the PM2.5 prediction.
-
-        Positive SHAP value:
-            pushes predicted PM2.5 higher.
-
-        Negative SHAP value:
-            pushes predicted PM2.5 lower.
-
-        These values explain the model prediction.
-        They are not causal proof.
-        """
+    def explain_prediction(self, features):
 
         shap_values = (
             self.shap_explainer.shap_values(
@@ -270,115 +286,100 @@ class AirShieldAI:
 
         shap_values = np.asarray(
             shap_values
-        ).reshape(-1)
+        )
+
+
+        if shap_values.ndim > 1:
+
+            shap_values = shap_values[0]
+
 
         feature_names = [
 
             "pm2.5",
-
             "DEWP",
-
             "TEMP",
-
             "PRES",
-
             "Iws",
-
             "Is",
-
             "Ir",
 
             "hour_sin",
-
             "hour_cos",
 
             "month_sin",
-
             "month_cos",
 
             "wind_NE",
-
             "wind_NW",
-
             "wind_SE",
-
             "wind_cv"
+
         ]
 
-        explanations = {}
 
-        for name, value in zip(
+        explanation = {}
+
+
+        for feature, value in zip(
             feature_names,
             shap_values
         ):
 
-            explanations[name] = round(
+            explanation[feature] = round(
                 float(value),
                 4
             )
 
-        # ----------------------------------
-        # Sort by absolute contribution
-        # ----------------------------------
 
-        explanations = dict(
+        # Sort by absolute contribution
+        explanation = dict(
             sorted(
-                explanations.items(),
-                key=lambda item: abs(
-                    item[1]
-                ),
+                explanation.items(),
+                key=lambda item: abs(item[1]),
                 reverse=True
             )
         )
 
-        return explanations
 
-    # ==================================================
-    # MAIN AIRSHIELD ANALYSIS
-    # ==================================================
+        return explanation
+
+
+    # =========================================================
+    # COMPLETE AIRSHIELD AI ANALYSIS
+    # =========================================================
 
     def analyze(
         self,
         event,
-        population,
+        population=None,
         schools=None,
         hospitals=None
     ):
-        """
-        Execute the complete AirShield AI pipeline.
 
-        Pipeline:
+        if population is None:
 
-        PM2.5 Forecast
-              ↓
-        Risk Classification
-              ↓
-        SHAP Explainability
-              ↓
-        Source Analysis
-              ↓
-        Trajectory Prediction
-              ↓
-        Plume Simulation
-              ↓
-        Exposure Intelligence
+            population = {}
 
-        Returns a unified result dictionary.
-        """
 
-        schools = schools or []
+        if schools is None:
 
-        hospitals = hospitals or []
+            schools = []
 
-        # ==================================
-        # 1. PM2.5 FORECAST
-        # ==================================
 
-        features = (
-            self.create_forecast_features(
-                event
-            )
+        if hospitals is None:
+
+            hospitals = []
+
+
+        # =====================================================
+        # 1. FORECAST
+        # =====================================================
+
+        features = self.create_forecast_features(
+            event
         )
+
 
         predicted_pm25 = float(
             self.forecast_model.predict(
@@ -386,26 +387,33 @@ class AirShieldAI:
             )[0]
         )
 
-        predicted_pm25 = max(
-            0.0,
-            predicted_pm25
+
+        predicted_pm25 = round(
+            predicted_pm25,
+            2
         )
 
-        # ==================================
-        # 2. RISK CLASSIFICATION
-        # ==================================
+
+        # =====================================================
+        # 2. RISK ANALYSIS
+        # =====================================================
 
         risk_level = get_risk_level(
             predicted_pm25
         )
 
-        risk_score = calculate_risk_score(
-            predicted_pm25
+
+        risk_score = round(
+            calculate_risk_score(
+                predicted_pm25
+            ),
+            3
         )
 
-        # ==================================
-        # 3. SHAP EXPLAINABILITY
-        # ==================================
+
+        # =====================================================
+        # 3. SHAP EXPLANATION
+        # =====================================================
 
         shap_explanation = (
             self.explain_prediction(
@@ -413,9 +421,10 @@ class AirShieldAI:
             )
         )
 
-        # ==================================
-        # 4. SOURCE ANALYSIS
-        # ==================================
+
+        # =====================================================
+        # 4. POLLUTION SOURCE ANALYSIS
+        # =====================================================
 
         source_result = (
             self.source_classifier.classify(
@@ -423,61 +432,78 @@ class AirShieldAI:
             )
         )
 
-        # ==================================
-        # 5. TRAJECTORY
-        # ==================================
 
-        trajectory = (
-            self.trajectory_model
-            .generate_trajectory(
+        # =====================================================
+        # 5. POLLUTION TRAJECTORY
+        # =====================================================
 
-                latitude=event[
-                    "latitude"
-                ],
+        trajectory_result = (
+            self.trajectory_model.generate_trajectory(
 
-                longitude=event[
-                    "longitude"
-                ],
-
-                wind_speed=event[
-                    "wind_speed"
-                ],
-
-                wind_direction=event[
-                    "wind_direction_degrees"
-                ],
-
-                duration_minutes=event.get(
-                    "duration_minutes",
-                    120
+                latitude=float(
+                    event["latitude"]
                 ),
 
-                interval_minutes=event.get(
-                    "interval_minutes",
-                    15
+                longitude=float(
+                    event["longitude"]
+                ),
+
+                wind_speed=float(
+                    event.get(
+                        "wind_speed",
+                        event.get(
+                            "Iws",
+                            0
+                        )
+                    )
+                ),
+
+                wind_direction=float(
+                    event.get(
+                        "wind_direction_degrees",
+                        event.get(
+                            "wind_direction",
+                            0
+                        )
+                    )
+                ),
+
+                duration_minutes=int(
+                    event.get(
+                        "duration_minutes",
+                        120
+                    )
+                ),
+
+                interval_minutes=int(
+                    event.get(
+                        "interval_minutes",
+                        15
+                    )
                 )
             )
         )
 
-        # ==================================
-        # 6. PLUME SIMULATION
-        # ==================================
 
-        plume = (
-            self.plume_simulator
-            .generate_plume(
-                trajectory
+        # =====================================================
+        # 6. PLUME SIMULATION
+        # =====================================================
+
+        plume_result = (
+            self.plume_simulator.generate_plume(
+                trajectory_result
             )
         )
 
-        # ==================================
-        # 7. EXPOSURE INTELLIGENCE
-        # ==================================
 
-        exposure = (
+        # =====================================================
+        # 7. EXPOSURE ANALYSIS
+        # =====================================================
+
+        exposure_result = (
             self.exposure_model.analyze(
 
-                plume=plume,
+                plume=plume_result,
 
                 risk_level=risk_level,
 
@@ -489,15 +515,12 @@ class AirShieldAI:
             )
         )
 
-        # ==================================
-        # 8. UNIFIED RESULT
-        # ==================================
 
-        return {
+        # =====================================================
+        # 8. FINAL INTEGRATED RESULT
+        # =====================================================
 
-            # --------------------------------
-            # Event
-            # --------------------------------
+        result = {
 
             "event_id":
                 event.get(
@@ -505,72 +528,42 @@ class AirShieldAI:
                     "UNKNOWN"
                 ),
 
-            # --------------------------------
-            # Forecast
-            # --------------------------------
+            "prediction": {
 
-            "risk":
-                risk_level,
-
-            "risk_score":
-                round(
-                    risk_score,
-                    3
-                ),
-
-            "predicted_pm25":
-                round(
+                "predicted_pm25":
                     predicted_pm25,
-                    2
-                ),
 
-            "forecast_horizon":
-                "1_hour",
+                "forecast_horizon":
+                    "1_hour",
 
-            # --------------------------------
-            # SHAP Explanation
-            # --------------------------------
+                "risk_level":
+                    risk_level,
 
-            "shap":
-                shap_explanation,
+                "risk_score":
+                    risk_score
+            },
 
-            # --------------------------------
-            # Source Analysis
-            # --------------------------------
+            "explainability": {
 
-            "probable_source":
-                source_result[
-                    "probable_source"
-                ],
+                "method":
+                    "SHAP",
 
-            "source_confidence":
-                source_result[
-                    "source_confidence"
-                ],
+                "feature_contributions":
+                    shap_explanation
+            },
 
-            "source_scores":
-                source_result[
-                    "source_scores"
-                ],
-
-            # --------------------------------
-            # Trajectory
-            # --------------------------------
+            "source_analysis":
+                source_result,
 
             "trajectory":
-                trajectory,
-
-            # --------------------------------
-            # Pollution Plume
-            # --------------------------------
+                trajectory_result,
 
             "plume":
-                plume,
-
-            # --------------------------------
-            # Exposure
-            # --------------------------------
+                plume_result,
 
             "exposure":
-                exposure
+                exposure_result
         }
+
+
+        return result
