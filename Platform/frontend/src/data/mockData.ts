@@ -23,8 +23,6 @@ export const member1Data: Member1EventsResponse = {
   data: [
     {
       sensor_id: "S1",
-      event_id: "EVT-0001",
-       timestamp: "2026-09-26 15:00:00",
 
       latitude: 10.95115995265754,
 

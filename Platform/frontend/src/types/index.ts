@@ -5,8 +5,7 @@
 
 export interface Member1Event {
   sensor_id: string
-  event_id: string
-  timestamp: string
+
   latitude: number
   longitude: number
   location: string

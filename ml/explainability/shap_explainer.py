@@ -1,6 +1,6 @@
 import joblib
 import numpy as np
-import shap
+import xgboost as xgb
 
 from ml.common.config import (
     FORECAST_MODEL_FILE,
@@ -9,6 +9,10 @@ from ml.common.config import (
 
 
 class AirShieldSHAPExplainer:
+    """
+    AirShield SHAP explainability using
+    XGBoost's native SHAP contribution calculation.
+    """
 
     def __init__(self):
 
@@ -22,36 +26,49 @@ class AirShieldSHAPExplainer:
             FORECAST_MODEL_FILE
         )
 
-        self.explainer = shap.TreeExplainer(
-            self.model
-        )
-
     def explain(self, features):
 
-        # Convert features into numpy array
-        X = np.array(
+        # Convert features into a 2D NumPy array
+        X = np.asarray(
             features,
             dtype=float
         ).reshape(1, -1)
 
-        # Calculate SHAP values
-        shap_values = self.explainer.shap_values(
-            X
+        # Get the underlying XGBoost Booster
+        booster = self.model.get_booster()
+
+        # Create DMatrix with the SAME feature names
+        # used when the model was trained.
+        dmatrix = xgb.DMatrix(
+            X,
+            feature_names=list(
+                FEATURE_COLUMNS
+            )
         )
 
-        # Convert to 1D array
-        if isinstance(shap_values, list):
-            shap_values = shap_values[0]
+        # Calculate native XGBoost SHAP contributions
+        shap_values = booster.predict(
+            dmatrix,
+            pred_contribs=True
+        )
 
         shap_values = np.asarray(
             shap_values
-        ).reshape(-1)
+        )
+
+        # First prediction
+        shap_values = shap_values[0]
+
+        # Last value is the bias/base value.
+        # The remaining values correspond to
+        # the actual 15 features.
+        feature_values = shap_values[:-1]
 
         explanation = {}
 
         for feature, value in zip(
             FEATURE_COLUMNS,
-            shap_values
+            feature_values
         ):
             explanation[feature] = round(
                 float(value),
@@ -62,7 +79,9 @@ class AirShieldSHAPExplainer:
         explanation = dict(
             sorted(
                 explanation.items(),
-                key=lambda item: abs(item[1]),
+                key=lambda item: abs(
+                    item[1]
+                ),
                 reverse=True
             )
         )
@@ -120,3 +139,5 @@ if __name__ == "__main__":
         )
 
     print("\n======================================")
+    print("SHAP explainability test completed.")
+    print("======================================")
