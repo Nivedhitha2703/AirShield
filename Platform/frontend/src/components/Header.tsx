@@ -11,15 +11,26 @@ function Header() {
       </a>
 
       <nav className="header-nav">
-        <a href="#map">Live Map</a>
-        <a href="#intelligence">Intelligence</a>
-        <a href="#alerts">Alerts</a>
-        <a href="#report">Report</a>
+        <a href="#pollution-intelligence">
+          Pollution Map
+        </a>
+
+        <a href="#risk-intelligence">
+          Intelligence
+        </a>
+
+        <a href="#alerts">
+          Alerts
+        </a>
+
+        <a href="#report">
+          Report
+        </a>
       </nav>
 
       <div className="header-status">
-        <span className="status-dot"></span>
-        <span>System Online</span>
+        <span className="status-dot" />
+        <span>AirShield Online</span>
       </div>
     </header>
   )
