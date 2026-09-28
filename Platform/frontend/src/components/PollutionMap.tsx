@@ -19,22 +19,46 @@ interface PollutionMapProps {
   risk: Member2AIResponse
 }
 
+function formatRisk(value: string) {
+  return value.replace(/_/g, " ")
+}
+
+function getRiskColor(risk: string) {
+  switch (risk.toUpperCase()) {
+    case "CRITICAL":
+      return "#ff3f4d"
+
+    case "HIGH":
+      return "#ff8a3d"
+
+    case "MODERATE":
+      return "#ffd166"
+
+    default:
+      return "#57f5cf"
+  }
+}
+
 function PollutionMap({
   event,
   risk,
 }: PollutionMapProps) {
-
   const center: [number, number] = [
     event.latitude,
     event.longitude,
   ]
 
-  const trajectory = risk.trajectory.map(
-    (point) =>
-      [
-        point.latitude,
-        point.longitude,
-      ] as [number, number]
+  const trajectory =
+    risk.trajectory?.map(
+      (point) =>
+        [
+          point.latitude,
+          point.longitude,
+        ] as [number, number]
+    ) ?? []
+
+  const riskColor = getRiskColor(
+    risk.risk || event.risk_level
   )
 
   return (
@@ -52,17 +76,16 @@ function PollutionMap({
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
 
-
-        {/* =================================================
-            OUTER PULSING POLLUTION ZONES
+        {/* ================================================
+            POLLUTION IMPACT ZONES
         ================================================= */}
 
         <Circle
           center={center}
           radius={1800}
           pathOptions={{
-            color: "#ff4654",
-            fillColor: "#ff4654",
+            color: riskColor,
+            fillColor: riskColor,
             fillOpacity: 0.035,
             weight: 1,
             className: "pollution-zone pollution-zone-one",
@@ -73,8 +96,8 @@ function PollutionMap({
           center={center}
           radius={1100}
           pathOptions={{
-            color: "#ff5965",
-            fillColor: "#ff5965",
+            color: riskColor,
+            fillColor: riskColor,
             fillOpacity: 0.05,
             weight: 1,
             className: "pollution-zone pollution-zone-two",
@@ -85,16 +108,15 @@ function PollutionMap({
           center={center}
           radius={600}
           pathOptions={{
-            color: "#ff6b72",
-            fillColor: "#ff6b72",
+            color: riskColor,
+            fillColor: riskColor,
             fillOpacity: 0.08,
             weight: 1,
             className: "pollution-zone pollution-zone-three",
           }}
         />
 
-
-        {/* =================================================
+        {/* ================================================
             MAIN POLLUTION HOTSPOT
         ================================================= */}
 
@@ -102,36 +124,35 @@ function PollutionMap({
           center={center}
           radius={28}
           pathOptions={{
-            color: "#ff3f4d",
-            fillColor: "#ff3f4d",
+            color: riskColor,
+            fillColor: riskColor,
             fillOpacity: 0.16,
             weight: 2,
             className: "pollution-hotspot",
           }}
         />
 
-
-        {/* Inner hotspot */}
-
         <CircleMarker
           center={center}
           radius={12}
           pathOptions={{
-            color: "#ff5965",
-            fillColor: "#ff3445",
+            color: riskColor,
+            fillColor: riskColor,
             fillOpacity: 0.9,
             weight: 2,
             className: "pollution-core",
           }}
         >
-
           <Popup>
-
             <div className="map-popup">
 
               <strong>
-                LIVE POLLUTION EVENT
+                POLLUTION EVENT
               </strong>
+
+              <div>
+                Event: {event.event_id}
+              </div>
 
               <div>
                 Sensor: {event.sensor_id}
@@ -142,11 +163,13 @@ function PollutionMap({
               </div>
 
               <div>
-                Event: {event.event_type}
+                Type: {event.event_type}
               </div>
 
               <div>
-                Risk: {event.risk_level}
+                Risk: {formatRisk(
+                  risk.risk || event.risk_level
+                )}
               </div>
 
               <div>
@@ -154,21 +177,18 @@ function PollutionMap({
               </div>
 
               <div>
-                PM2.5: {event.pm25.toFixed(1)}
+                PM2.5: {event.pm25.toFixed(1)} µg/m³
               </div>
 
               <div>
-                PM10: {event.pm10.toFixed(1)}
+                PM10: {event.pm10.toFixed(1)} µg/m³
               </div>
 
             </div>
-
           </Popup>
-
         </CircleMarker>
 
-
-        {/* =================================================
+        {/* ================================================
             SENSOR SIGNAL RINGS
         ================================================= */}
 
@@ -176,7 +196,7 @@ function PollutionMap({
           center={center}
           radius={42}
           pathOptions={{
-            color: "#ff5662",
+            color: riskColor,
             fillOpacity: 0,
             weight: 1,
             dashArray: "4 8",
@@ -188,7 +208,7 @@ function PollutionMap({
           center={center}
           radius={58}
           pathOptions={{
-            color: "#ff5662",
+            color: riskColor,
             fillOpacity: 0,
             weight: 1,
             dashArray: "3 12",
@@ -196,13 +216,11 @@ function PollutionMap({
           }}
         />
 
-
-        {/* =================================================
-            PREDICTED TRAJECTORY
+        {/* ================================================
+            MEMBER 2 PREDICTED TRAJECTORY
         ================================================= */}
 
         {trajectory.length > 1 && (
-
           <Polyline
             positions={trajectory}
             pathOptions={{
@@ -213,90 +231,54 @@ function PollutionMap({
               className: "pollution-trajectory",
             }}
           >
-
             <Popup>
-              Predicted pollution trajectory
+              <div className="map-popup">
+                <strong>
+                  PREDICTED POLLUTION TRAJECTORY
+                </strong>
+
+                <div>
+                  Forecast:{" "}
+                  {risk.forecast_horizon.replace(
+                    /_/g,
+                    " "
+                  )}
+                </div>
+
+                <div>
+                  Points: {trajectory.length}
+                </div>
+
+                <div>
+                  Predicted PM2.5:{" "}
+                  {risk.predicted_pm25.toFixed(1)} µg/m³
+                </div>
+              </div>
             </Popup>
-
           </Polyline>
-
         )}
 
-
-        {/* =================================================
-            DEMO SENSOR POINTS
-            These are visual indicators only.
+        {/* ================================================
+            TRAJECTORY POINTS
         ================================================= */}
 
-        <CircleMarker
-          center={[
-            event.latitude + 0.025,
-            event.longitude - 0.018,
-          ]}
-          radius={5}
-          pathOptions={{
-            color: "#52f2c9",
-            fillColor: "#52f2c9",
-            fillOpacity: 0.9,
-            weight: 1,
-            className: "sensor-point",
-          }}
-        >
-
-          <Popup>
-            Monitoring sensor
-          </Popup>
-
-        </CircleMarker>
-
-
-        <CircleMarker
-          center={[
-            event.latitude - 0.018,
-            event.longitude + 0.028,
-          ]}
-          radius={5}
-          pathOptions={{
-            color: "#52f2c9",
-            fillColor: "#52f2c9",
-            fillOpacity: 0.9,
-            weight: 1,
-            className: "sensor-point",
-          }}
-        >
-
-          <Popup>
-            Monitoring sensor
-          </Popup>
-
-        </CircleMarker>
-
-
-        <CircleMarker
-          center={[
-            event.latitude + 0.015,
-            event.longitude + 0.035,
-          ]}
-          radius={5}
-          pathOptions={{
-            color: "#63ddff",
-            fillColor: "#63ddff",
-            fillOpacity: 0.9,
-            weight: 1,
-            className: "sensor-point",
-          }}
-        >
-
-          <Popup>
-            Monitoring sensor
-          </Popup>
-
-        </CircleMarker>
+        {trajectory.slice(1).map((point, index) => (
+          <CircleMarker
+            key={`trajectory-${index}`}
+            center={point}
+            radius={4}
+            pathOptions={{
+              color: "#57f5cf",
+              fillColor: "#57f5cf",
+              fillOpacity: 0.85,
+              weight: 1,
+            }}
+          />
+        ))}
 
       </MapContainer>
 
-
-      {/* =================================================
+      {/* ================================================
           MAP HUD
       ================================================= */}
 
@@ -304,10 +286,9 @@ function PollutionMap({
 
         <span className="map-live-dot" />
 
-        LIVE POLLUTION MAP
+        POLLUTION INTELLIGENCE MAP
 
       </div>
-
 
       <div className="map-hud map-hud-right">
 
@@ -323,7 +304,6 @@ function PollutionMap({
 
       </div>
 
-
       <div className="map-hud map-hud-bottom">
 
         <span>
@@ -335,11 +315,12 @@ function PollutionMap({
         </strong>
 
         <em>
-          {event.risk_level}
+          {formatRisk(
+            risk.risk || event.risk_level
+          )}
         </em>
 
       </div>
-
 
       <div className="map-scan-line" />
 
@@ -348,5 +329,3 @@ function PollutionMap({
 }
 
 export default PollutionMap
-
-

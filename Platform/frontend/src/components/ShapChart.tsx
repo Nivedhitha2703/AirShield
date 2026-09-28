@@ -1,104 +1,176 @@
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts"
+import type { Member2AIResponse } from "../types"
 
 interface ShapChartProps {
-  shap: Record<string, number>
+  shap: Member2AIResponse["shap"]
   risk: string
 }
 
-function ShapChart({ shap, risk }: ShapChartProps) {
+function ShapChart({
+  shap,
+  risk,
+}: ShapChartProps) {
 
-  const data = Object.entries(shap).map(([name, value]) => ({
-    name,
-    value,
-  }))
+  const entries = Object.entries(shap)
+    .sort(([, a], [, b]) => Math.abs(b) - Math.abs(a))
 
-  const formattedRisk = risk.replace(/_/g, " ")
+  const maxValue = Math.max(
+    ...entries.map(([, value]) => Math.abs(value)),
+    1
+  )
 
   return (
-    <div className="card shap-card">
+    <section className="dashboard-section shap-section">
 
-      <div className="card-heading">
+      {/* HEADER */}
+
+      <div className="shap-heading">
 
         <div>
-
-          <span className="card-kicker">
-            EXPLAINABLE AI
+          <span className="section-kicker">
+            AI EXPLAINABILITY
           </span>
 
-          <h3>
-            Why is the risk {formattedRisk}?
-          </h3>
+          <h2>
+            Why did the AI predict this risk?
+          </h2>
+
+          <p>
+            Key environmental factors contributing to the
+            current AI risk assessment.
+          </p>
+        </div>
+
+        <div className="shap-risk-badge">
+          {risk}
+        </div>
+
+      </div>
+
+
+      {/* EXPLANATION */}
+
+      <div className="shap-explanation">
+
+        <div className="shap-explanation-icon">
+          ✦
+        </div>
+
+        <p>
+          Positive contributions increase the predicted
+          risk, while negative contributions reduce it.
+          The chart shows the relative influence of each
+          model feature.
+        </p>
+
+      </div>
+
+
+      {/* FEATURE CONTRIBUTIONS */}
+
+      <div className="shap-card">
+
+        <div className="shap-card-header">
+
+          <div>
+            <span className="section-kicker">
+              FEATURE CONTRIBUTIONS
+            </span>
+
+            <h3>
+              Model influence
+            </h3>
+          </div>
+
+          <div className="shap-legend">
+
+            <span>
+              <i className="legend-positive" />
+              Increases risk
+            </span>
+
+            <span>
+              <i className="legend-negative" />
+              Reduces risk
+            </span>
+
+          </div>
+
+        </div>
+
+
+        <div className="shap-list">
+
+          {entries.map(([feature, value]) => {
+
+            const percentage =
+              (Math.abs(value) / maxValue) * 100
+
+            const positive = value >= 0
+
+            return (
+              <div
+                className="shap-row"
+                key={feature}
+              >
+
+                <div className="shap-label">
+                  <span>
+                    {feature}
+                  </span>
+
+                  <strong
+                    className={
+                      positive
+                        ? "shap-value positive"
+                        : "shap-value negative"
+                    }
+                  >
+                    {positive ? "+" : ""}
+                    {value.toFixed(2)}
+                  </strong>
+                </div>
+
+
+                <div className="shap-track">
+
+                  <div
+                    className={
+                      positive
+                        ? "shap-bar positive"
+                        : "shap-bar negative"
+                    }
+                    style={{
+                      width: `${percentage}%`,
+                    }}
+                  />
+
+                </div>
+
+              </div>
+            )
+          })}
 
         </div>
 
       </div>
 
 
-      <p>
-        Key factors contributing to the current AI risk prediction.
-      </p>
+      {/* FOOTNOTE */}
 
+      <div className="shap-footnote">
 
-      <div className="chart-container">
+        <span>
+          SHAP
+        </span>
 
-        <ResponsiveContainer
-          width="100%"
-          height={270}
-        >
-
-          <BarChart
-            data={data}
-            layout="vertical"
-            margin={{
-              top: 5,
-              right: 20,
-              left: 20,
-              bottom: 5,
-            }}
-          >
-
-            <CartesianGrid
-              strokeDasharray="3 3"
-              horizontal={false}
-            />
-
-
-            <XAxis
-              type="number"
-            />
-
-
-            <YAxis
-              type="category"
-              dataKey="name"
-              width={105}
-            />
-
-
-            <Tooltip />
-
-
-            <Bar
-              dataKey="value"
-              fill="#0f766e"
-              radius={[0, 6, 6, 0]}
-            />
-
-          </BarChart>
-
-        </ResponsiveContainer>
+        <p>
+          Feature contributions represent the model's
+          explanation of this individual prediction.
+        </p>
 
       </div>
 
-    </div>
+    </section>
   )
 }
 

@@ -1,81 +1,268 @@
-import { useState, type FormEvent } from "react"
+import { useState } from "react"
+import { submitCitizenReport } from "../services/api"
 
 function CitizenReport() {
-  const [submitted, setSubmitted] = useState(false)
+  const [pollutionType, setPollutionType] = useState("")
+  const [location, setLocation] = useState("")
+  const [description, setDescription] = useState("")
+  const [image, setImage] = useState<File | undefined>()
+  const [status, setStatus] = useState("")
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(
+    event: React.FormEvent<HTMLFormElement>
+  ) {
     event.preventDefault()
-    setSubmitted(true)
+
+    setStatus("Submitting report...")
+
+    try {
+      await submitCitizenReport({
+        pollutionType,
+        location,
+        description,
+        image,
+      })
+
+      setStatus(
+        "Report received successfully."
+      )
+
+      setPollutionType("")
+      setLocation("")
+      setDescription("")
+      setImage(undefined)
+
+      const fileInput =
+        document.getElementById(
+          "citizen-photo"
+        ) as HTMLInputElement | null
+
+      if (fileInput) {
+        fileInput.value = ""
+      }
+
+    } catch {
+      setStatus(
+        "The report could not be processed right now. Please try again."
+      )
+    }
   }
 
   return (
-    <div className="card report-card">
-      <div className="card-heading">
+    <section
+      id="report"
+      className="dashboard-section citizen-report-section"
+    >
+
+      {/* HEADER */}
+
+      <div className="citizen-heading">
+
         <div>
-          <span className="card-kicker">COMMUNITY SIGNAL</span>
-          <h3>Report Pollution</h3>
+
+          <span className="section-kicker">
+            COMMUNITY SIGNAL
+          </span>
+
+          <h2>
+            Report Local Pollution
+          </h2>
+
+          <p>
+            Help AirShield improve local pollution
+            intelligence by sharing what you observe.
+          </p>
+
         </div>
+
+        <div className="citizen-status-icon">
+          +
+        </div>
+
       </div>
 
-      <p>
-        Help AirShield improve local pollution intelligence by
-        reporting what you observe.
-      </p>
 
-      {submitted ? (
-        <div className="report-success">
-          <div className="report-success-icon">✓</div>
+      {/* REPORT FORM */}
 
-          <div>
-            <strong>Report submitted</strong>
-            <p>
-              Thank you. Your observation has been recorded for
-              review.
-            </p>
-          </div>
-        </div>
-      ) : (
-        <form className="report-form" onSubmit={handleSubmit}>
-          <label>
-            Pollution type
-            <select defaultValue="">
-              <option value="" disabled>
-                Select type
+      <div className="citizen-report-card">
+
+        <form
+          onSubmit={handleSubmit}
+          className="citizen-form"
+        >
+
+          {/* POLLUTION TYPE */}
+
+          <div className="citizen-field">
+
+            <label htmlFor="pollution-type">
+              Pollution type
+            </label>
+
+            <select
+              id="pollution-type"
+              value={pollutionType}
+              onChange={(event) =>
+                setPollutionType(event.target.value)
+              }
+              required
+            >
+
+              <option value="">
+                Select pollution type
               </option>
-              <option>Smoke</option>
-              <option>Dust</option>
-              <option>Burning</option>
-              <option>Industrial emissions</option>
-              <option>Unknown</option>
+
+              <option value="Smoke">
+                Smoke
+              </option>
+
+              <option value="Dust">
+                Dust
+              </option>
+
+              <option value="Burning">
+                Burning
+              </option>
+
+              <option value="Industrial emissions">
+                Industrial emissions
+              </option>
+
+              <option value="Unknown">
+                Unknown
+              </option>
+
             </select>
-          </label>
 
-          <label>
-            Location
+          </div>
+
+
+          {/* LOCATION */}
+
+          <div className="citizen-field">
+
+            <label htmlFor="pollution-location">
+              Location
+            </label>
+
             <input
+              id="pollution-location"
               type="text"
-              placeholder="Enter location"
+              value={location}
+              onChange={(event) =>
+                setLocation(event.target.value)
+              }
+              placeholder="Enter the observed location"
+              required
             />
-          </label>
 
-          <label>
-            Description
+          </div>
+
+
+          {/* DESCRIPTION */}
+
+          <div className="citizen-field citizen-field-full">
+
+            <label htmlFor="pollution-description">
+              What did you observe?
+            </label>
+
             <textarea
+              id="pollution-description"
+              value={description}
+              onChange={(event) =>
+                setDescription(event.target.value)
+              }
               placeholder="Describe what you observed..."
+              rows={5}
+              required
             />
-          </label>
 
-          <label>
-            Photo
-            <input type="file" accept="image/*" />
-          </label>
+          </div>
 
-          <button type="submit">
-            Submit Pollution Report
-          </button>
+
+          {/* PHOTO */}
+
+          <div className="citizen-field citizen-field-full">
+
+            <label htmlFor="citizen-photo">
+              Photo evidence
+            </label>
+
+            <div className="citizen-upload">
+
+              <div className="upload-icon">
+                ↑
+              </div>
+
+              <div>
+
+                <strong>
+                  Attach a pollution photo
+                </strong>
+
+                <span>
+                  Optional • JPG, PNG or similar image
+                </span>
+
+              </div>
+
+              <input
+                id="citizen-photo"
+                type="file"
+                accept="image/*"
+                onChange={(event) =>
+                  setImage(
+                    event.target.files?.[0]
+                  )
+                }
+              />
+
+            </div>
+
+            {image && (
+              <p className="selected-file">
+                Selected: {image.name}
+              </p>
+            )}
+
+          </div>
+
+
+          {/* SUBMIT */}
+
+          <div className="citizen-submit-row">
+
+            <button
+              type="submit"
+              className="citizen-submit-button"
+            >
+              Submit Pollution Report
+              <span>→</span>
+            </button>
+
+            {status && (
+              <p
+                className={`citizen-status ${
+                  status.includes("successfully")
+                    ? "success"
+                    : status.includes("Submitting")
+                      ? "loading"
+                      : "error"
+                }`}
+                aria-live="polite"
+              >
+                {status}
+              </p>
+            )}
+
+          </div>
+
         </form>
-      )}
-    </div>
+
+      </div>
+
+    </section>
   )
 }
 

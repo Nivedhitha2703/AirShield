@@ -1,42 +1,152 @@
-import type { Alert } from "../types"
+import type {
+  Member1Event,
+  Member2AIResponse,
+} from "../types"
 
 interface AlertsPanelProps {
-  alerts: Alert[]
+  member1: Member1Event
+  member2?: Member2AIResponse
 }
 
-function AlertsPanel({ alerts }: AlertsPanelProps) {
+function AlertsPanel({
+  member1,
+  member2,
+}: AlertsPanelProps) {
+
+  const alerts = [
+    {
+      type: "POLLUTION",
+      severity: "HIGH",
+      message: `${member1.event_type} detected with AQI ${Math.round(member1.aqi)}.`,
+      time: member1.timestamp,
+    },
+
+    {
+      type: "PM2.5",
+      severity: "CRITICAL",
+      message: `PM2.5 concentration reached ${member1.pm25.toFixed(1)} µg/m³.`,
+      time: member1.timestamp,
+    },
+
+    {
+      type: "PM10",
+      severity: "CRITICAL",
+      message: `PM10 concentration reached ${member1.pm10.toFixed(1)} µg/m³.`,
+      time: member1.timestamp,
+    },
+
+    ...(member2
+      ? [
+          {
+            type: "AI RISK",
+            severity: "HIGH",
+            message: `AI classified the event as ${member2.risk} with a ${Math.round(
+              member2.risk_score * 100
+            )}% risk score.`,
+            time: "AI analysis",
+          },
+
+          {
+            type: "SOURCE",
+            severity: "INFO",
+            message: `Probable pollution source: ${
+              member2.probable_source
+            } (${Math.round(
+              member2.source_confidence * 100
+            )}% confidence).`,
+            time: "AI analysis",
+          },
+        ]
+      : []),
+  ]
+
   return (
-    <div className="card alerts-card">
-      <div className="card-heading">
+    <section
+      id="alerts"
+      className="dashboard-section alerts-section"
+    >
+
+      {/* HEADER */}
+
+      <div className="alerts-heading">
+
         <div>
-          <span className="card-kicker">EARLY WARNING</span>
-          <h3>Active Alerts</h3>
+          <span className="section-kicker">
+            AIRSHIELD ALERTS
+          </span>
+
+          <h2>
+            Pollution Alerts
+          </h2>
+
+          <p>
+            Important environmental events detected by
+            AirShield intelligence.
+          </p>
         </div>
 
-        <span className="alert-count">{alerts.length} alerts</span>
+        <div className="alert-count">
+          <strong>
+            {alerts.length}
+          </strong>
+
+          <span>
+            ACTIVE ALERTS
+          </span>
+        </div>
+
       </div>
 
-      <div>
-        {alerts.map((alert) => (
-          <div className="alert" key={alert.id}>
-            <div className={`alert-icon ${alert.severity.toLowerCase()}`}>
-              {alert.severity === "SEVERE"
-                ? "!"
-                : alert.severity === "HIGH"
-                  ? "⚠"
-                  : "i"}
+
+      {/* ALERT LIST */}
+
+      <div className="alerts-list">
+
+        {alerts.map((alert, index) => (
+
+          <article
+            key={`${alert.type}-${index}`}
+            className={`alert-card severity-${alert.severity.toLowerCase()}`}
+          >
+
+            <div className="alert-indicator">
+              <span />
             </div>
+
 
             <div className="alert-content">
-              <strong>{alert.severity} · {alert.type}</strong>
-              <p>{alert.message}</p>
+
+              <div className="alert-topline">
+
+                <span className="alert-type">
+                  {alert.type}
+                </span>
+
+                <span className="alert-severity">
+                  {alert.severity}
+                </span>
+
+              </div>
+
+
+              <p className="alert-message">
+                {alert.message}
+              </p>
+
+
+              <span className="alert-time">
+                {alert.time}
+              </span>
+
             </div>
 
-            <span className="alert-time">{alert.time}</span>
-          </div>
+          </article>
+
         ))}
+
       </div>
-    </div>
+
+    </section>
   )
 }
 

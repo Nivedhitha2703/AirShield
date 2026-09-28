@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useState, type PointerEvent } from "react"
 
 import Header from "../components/Header"
 import PollutionMap from "../components/PollutionMap"
@@ -12,7 +12,7 @@ import EventPassport from "../components/EventPassport"
 
 import {
   analyzePollutionEvent,
-  type AirShieldAnalyzeInput,
+  getMember1Events,
 } from "../services/api"
 
 import type {
@@ -20,109 +20,118 @@ import type {
   Member2AIResponse,
 } from "../types"
 
-import {
-  alerts,
-  member2Data as fallbackRisk,
-} from "../data/mockData"
-
 
 function Dashboard() {
 
-  /* =====================================================
-     REAL MEMBER 1 SENSOR DATA — S1
-  ===================================================== */
+  // =====================================================
+  // MEMBER 1 SENSOR DATA
+  // =====================================================
 
-  const [currentEvent, setCurrentEvent] = useState<Member1Event>({
-    sensor_id: "S1",
-    latitude: 10.956181017827104,
-    longitude: 76.97840632923085,
-    location: "Sensor S1",
-    pm25: 74.58218210731494,
-    pm10: 85.58071673579168,
-    no2: 34.62365297575152,
-    so2: 14.52352233806524,
-    co: 0.8300837810287154,
-    aqi: 79.51823204130815,
-    temperature: 30.04141047937352,
-    humidity: 64.17319314157301,
-    wind_speed: 14.698404270638571,
-    wind_direction: 122.617499969265,
-    event_type: "PM2.5 POLLUTION",
-    risk_level: "UNHEALTHY_FOR_SENSITIVE_GROUPS",
-    anomaly_score: 0,
-  })
+  const [currentEvent, setCurrentEvent] =
+    useState<Member1Event | null>(null)
+
+  const [loadingEvents, setLoadingEvents] =
+    useState(true)
+
+  const [eventsError, setEventsError] =
+    useState<string | null>(null)
 
 
-  /* =====================================================
-     MEMBER 2 AI STATE
-  ===================================================== */
+  // =====================================================
+  // MEMBER 2 AI STATE
+  // =====================================================
 
   const [member2Data, setMember2Data] =
-    useState<Member2AIResponse>(fallbackRisk)
+    useState<Member2AIResponse | null>(null)
 
-  const [loadingAI, setLoadingAI] = useState(true)
+  const [loadingAI, setLoadingAI] =
+    useState(false)
 
   const [aiError, setAiError] =
     useState<string | null>(null)
 
 
-  /* =====================================================
-     SEND REAL SENSOR DATA TO MEMBER 2 AI
-  ===================================================== */
+  // =====================================================
+  // FETCH MEMBER 1 EVENTS
+  // =====================================================
 
   useEffect(() => {
 
-    const input: AirShieldAnalyzeInput = {
+    setLoadingEvents(true)
+    setEventsError(null)
 
-      event: {
+    getMember1Events()
 
-        event_id: "AS-S1-001",
+      .then((result) => {
 
-        latitude: currentEvent.latitude,
+        console.log(
+          "REAL MEMBER 1 EVENTS:",
+          result
+        )
 
-        longitude: currentEvent.longitude,
+        if (
+          !result.data ||
+          result.data.length === 0
+        ) {
+          throw new Error(
+            "Member 1 returned no pollution events."
+          )
+        }
 
-        pm25: currentEvent.pm25,
+        // Use the first real Member 1 event
+        // for the initial dashboard view.
+        setCurrentEvent(result.data[0])
 
-        DEWP: 18.0,
+      })
 
-        TEMP: currentEvent.temperature,
+      .catch((error) => {
 
-        PRES: 1005.0,
+        console.error(
+          "Member 1 events error:",
+          error
+        )
 
-        Iws: currentEvent.wind_speed,
+        setEventsError(
+          error instanceof Error
+            ? error.message
+            : "Unable to connect to Member 1."
+        )
 
-        Is: 0.0,
+      })
 
-        Ir: 0.0,
+      .finally(() => {
 
-        hour: 14,
+        setLoadingEvents(false)
 
-        month: 9,
+      })
 
-        wind_direction: "SE",
+  }, [])
 
-        wind_speed: currentEvent.wind_speed,
 
-        wind_direction_degrees:
-          currentEvent.wind_direction,
+  // =====================================================
+  // SEND MEMBER 1 EVENT → MEMBER 2 AI
+  // =====================================================
 
-        duration_minutes: 120,
+  useEffect(() => {
 
-        interval_minutes: 15,
-      },
-
-      population: {
-        density_per_km2: 5000,
-      },
-
-      schools: [],
-
-      hospitals: [],
+    if (!currentEvent) {
+      return
     }
 
+    setLoadingAI(true)
+    setAiError(null)
+    setMember2Data(null)
 
-    analyzePollutionEvent(input)
+    /*
+      FINAL MEMBER 1 → MEMBER 2 INTEGRATION
+
+      Member 2 now accepts the complete Member 1
+      event object directly.
+
+      No transformation is required here.
+    */
+
+    analyzePollutionEvent(currentEvent)
 
       .then((result) => {
 
@@ -132,11 +141,6 @@ function Dashboard() {
         )
 
         setMember2Data(result)
-
-        setCurrentEvent((previous) => ({
-          ...previous,
-          risk_level: result.risk,
-        }))
 
       })
 
@@ -150,7 +154,7 @@ function Dashboard() {
         setAiError(
           error instanceof Error
             ? error.message
-            : "Unable to connect to AI service"
+            : "Unable to connect to AI service."
         )
 
       })
@@ -161,20 +165,22 @@ function Dashboard() {
 
       })
 
-  }, [])
+  }, [currentEvent])
 
 
-  /* =====================================================
-     HERO POINTER INTERACTION
-  ===================================================== */
+  // =====================================================
+  // HERO POINTER INTERACTION
+  // =====================================================
 
   const handleHeroPointerMove = (
-    event: React.PointerEvent<HTMLElement>
+    event: PointerEvent<HTMLElement>
   ) => {
 
-    const hero = event.currentTarget
+    const hero =
+      event.currentTarget
 
-    const rect = hero.getBoundingClientRect()
+    const rect =
+      hero.getBoundingClientRect()
 
     const x =
       event.clientX - rect.left
@@ -199,7 +205,7 @@ function Dashboard() {
 
 
   const handleHeroPointerLeave = (
-    event: React.PointerEvent<HTMLElement>
+    event: PointerEvent<HTMLElement>
   ) => {
 
     event.currentTarget.classList.remove(
@@ -209,6 +215,192 @@ function Dashboard() {
   }
 
 
+  // =====================================================
+  // LOADING MEMBER 1
+  // =====================================================
+
+  if (loadingEvents) {
+
+    return (
+      <div className="app-shell">
+
+        <Header />
+
+        <main className="dashboard-content">
+
+          <section className="dashboard-section">
+
+            <div className="section-heading">
+
+              <div>
+
+                <span className="section-kicker">
+                  MEMBER 1 INTEGRATION
+                </span>
+
+                <h2>
+                  Loading pollution intelligence...
+                </h2>
+
+              </div>
+
+              <div className="status-indicator">
+
+                <span className="status-dot" />
+
+                CONNECTING
+
+              </div>
+
+            </div>
+
+            <div className="card">
+
+              <p>
+                Connecting to the Member 1
+                pollution detection service...
+              </p>
+
+            </div>
+
+          </section>
+
+        </main>
+
+      </div>
+    )
+  }
+
+
+  // =====================================================
+  // MEMBER 1 CONNECTION ERROR
+  // =====================================================
+
+  if (eventsError || !currentEvent) {
+
+    return (
+      <div className="app-shell">
+
+        <Header />
+
+        <main className="dashboard-content">
+
+          <section className="dashboard-section">
+
+            <div className="section-heading">
+
+              <div>
+
+                <span className="section-kicker">
+                  MEMBER 1 INTEGRATION
+                </span>
+
+                <h2>
+                  Pollution intelligence unavailable
+                </h2>
+
+              </div>
+
+              <div className="status-indicator">
+
+                <span className="status-dot" />
+
+                OFFLINE
+
+              </div>
+
+            </div>
+
+            <div className="card">
+
+              <p>
+                {eventsError ||
+                  "No pollution event was returned by Member 1."}
+              </p>
+
+            </div>
+
+          </section>
+
+        </main>
+
+      </div>
+    )
+  }
+
+
+  // =====================================================
+  // WAIT FOR MEMBER 2
+  // =====================================================
+
+  if (loadingAI || !member2Data) {
+
+    return (
+      <div className="app-shell">
+
+        <Header />
+
+        <main className="dashboard-content">
+
+          <section className="dashboard-section">
+
+            <div className="section-heading">
+
+              <div>
+
+                <span className="section-kicker">
+                  AIRSHIELD AI
+                </span>
+
+                <h2>
+                  Analyzing pollution event...
+                </h2>
+
+                <p>
+                  Member 1 event detected. Sending
+                  environmental data to the AI risk engine.
+                </p>
+
+              </div>
+
+              <div className="status-indicator">
+
+                <span className="status-dot" />
+
+                AI ANALYZING
+
+              </div>
+
+            </div>
+
+            <div className="card">
+
+              {aiError ? (
+                <p>
+                  AI connection issue: {aiError}
+                </p>
+              ) : (
+                <p>
+                  Connecting to the AirShield AI
+                  risk intelligence service...
+                </p>
+              )}
+
+            </div>
+
+          </section>
+
+        </main>
+
+      </div>
+    )
+  }
+
+
+  // =====================================================
+  // MAIN DASHBOARD
+  // =====================================================
+
   return (
 
     <div className="app-shell">
@@ -216,9 +408,9 @@ function Dashboard() {
       <Header />
 
 
-      {/* =====================================================
-          HERO — LIVE AIR INTELLIGENCE
-      ===================================================== */}
+      {/* =================================================
+          HERO
+      ================================================= */}
 
       <section
         className="hero-section"
@@ -228,8 +420,6 @@ function Dashboard() {
 
         <div className="hero-interaction-layer" />
 
-
-        {/* Animated atmospheric particles */}
 
         <div className="hero-particles">
 
@@ -249,12 +439,8 @@ function Dashboard() {
         </div>
 
 
-        {/* Background grid */}
-
         <div className="hero-grid" />
 
-
-        {/* Atmospheric glow */}
 
         <div className="hero-glow glow-one" />
         <div className="hero-glow glow-two" />
@@ -271,7 +457,7 @@ function Dashboard() {
 
             <span className="live-dot" />
 
-            REAL-TIME AIR QUALITY MONITORING
+            POLLUTION INTELLIGENCE MONITORING
 
           </span>
 
@@ -294,10 +480,9 @@ function Dashboard() {
           </p>
 
 
-          {/* LIVE METRICS */}
+          {/* METRICS */}
 
           <div className="hero-metrics">
-
 
             <div className="hero-metric">
 
@@ -310,7 +495,7 @@ function Dashboard() {
               </strong>
 
               <em>
-                LIVE
+                MEMBER 1
               </em>
 
             </div>
@@ -357,13 +542,11 @@ function Dashboard() {
               <small>RISK</small>
 
               <strong>
-                {currentEvent.risk_level}
+                {member2Data.risk}
               </strong>
 
               <em>
-                {loadingAI
-                  ? "ANALYZING"
-                  : "AI ANALYSIS"}
+                AI ANALYSIS
               </em>
 
             </div>
@@ -382,6 +565,7 @@ function Dashboard() {
                 {Math.round(
                   member2Data.source_confidence * 100
                 )}
+
                 %
 
               </strong>
@@ -391,10 +575,13 @@ function Dashboard() {
 
                 <div
                   style={{
-                    width: `${
-                      member2Data.source_confidence *
-                      100
-                    }%`,
+                    width: `${Math.max(
+                      0,
+                      Math.min(
+                        member2Data.source_confidence * 100,
+                        100
+                      )
+                    )}%`,
                   }}
                 />
 
@@ -413,7 +600,7 @@ function Dashboard() {
 
               <span>◉</span>
 
-              LIVE DETECTION
+              MEMBER 1 DETECTION
 
             </div>
 
@@ -448,24 +635,13 @@ function Dashboard() {
           </div>
 
 
-          {/* AI CONNECTION STATUS */}
-
-          {loadingAI && (
-
-            <div className="ai-status-message">
-
-              Connecting to AirShield AI engine...
-
-            </div>
-
-          )}
-
-
           {aiError && (
 
             <div className="ai-status-message">
 
-              AI connection issue: {aiError}
+              AI connection issue:
+              {" "}
+              {aiError}
 
             </div>
 
@@ -480,17 +656,10 @@ function Dashboard() {
 
         <div className="hero-radar-zone">
 
-
-          {/* Connecting data paths */}
-
           <div className="data-orbit orbit-large" />
-
           <div className="data-orbit orbit-medium" />
-
           <div className="data-orbit orbit-small" />
 
-
-          {/* Main AirShield radar */}
 
           <div className="radar-main">
 
@@ -516,7 +685,7 @@ function Dashboard() {
               <br />
 
               <span>
-                LIVE INTELLIGENCE
+                AIR INTELLIGENCE
               </span>
 
             </div>
@@ -529,9 +698,7 @@ function Dashboard() {
           <div className="mini-radar radar-one">
 
             <div className="mini-radar-ring" />
-
             <div className="mini-radar-ring ring-second" />
-
             <div className="mini-sweep" />
 
             <div className="mini-core">
@@ -558,9 +725,7 @@ function Dashboard() {
           <div className="mini-radar radar-two critical-radar">
 
             <div className="mini-radar-ring" />
-
             <div className="mini-radar-ring ring-second" />
-
             <div className="mini-sweep" />
 
             <div className="mini-core">
@@ -587,9 +752,7 @@ function Dashboard() {
           <div className="mini-radar radar-three">
 
             <div className="mini-radar-ring" />
-
             <div className="mini-radar-ring ring-second" />
-
             <div className="mini-sweep" />
 
             <div className="mini-core">
@@ -616,9 +779,7 @@ function Dashboard() {
           <div className="mini-radar radar-four">
 
             <div className="mini-radar-ring" />
-
             <div className="mini-radar-ring ring-second" />
-
             <div className="mini-sweep" />
 
             <div className="mini-core">
@@ -640,13 +801,13 @@ function Dashboard() {
           </div>
 
 
-          {/* Floating pollution data */}
+          {/* FLOATING DATA */}
 
           <div className="floating-data data-one">
 
             <span />
 
-            SENSOR S1
+            SENSOR {currentEvent.sensor_id}
 
           </div>
 
@@ -669,7 +830,7 @@ function Dashboard() {
           </div>
 
 
-          {/* Wind flow */}
+          {/* WIND */}
 
           <div className="wind-flow">
 
@@ -689,7 +850,7 @@ function Dashboard() {
 
             <strong>
               {currentEvent.wind_speed.toFixed(1)}
-              km/h
+              m/s
             </strong>
 
           </div>
@@ -697,7 +858,7 @@ function Dashboard() {
         </div>
 
 
-        {/* Status bar */}
+        {/* STATUS BAR */}
 
         <div className="hero-status">
 
@@ -712,7 +873,7 @@ function Dashboard() {
 
           <div>
 
-            ● 200 EVENTS MONITORED
+            ● {currentEvent.event_type}
 
           </div>
 
@@ -728,9 +889,9 @@ function Dashboard() {
       </section>
 
 
-      {/* =====================================================
+      {/* =================================================
           DASHBOARD
-      ===================================================== */}
+      ================================================= */}
 
       <main className="dashboard-content">
 
@@ -739,18 +900,21 @@ function Dashboard() {
             POLLUTION INTELLIGENCE
         ================================================= */}
 
-        <section className="dashboard-section">
+        <section
+          className="dashboard-section"
+          id="pollution-intelligence"
+        >
 
           <div className="section-heading">
 
             <div>
 
               <span className="section-kicker">
-                LIVE INTELLIGENCE
+                POLLUTION INTELLIGENCE
               </span>
 
               <h2>
-                Pollution Intelligence
+                Environmental Risk
               </h2>
 
             </div>
@@ -760,9 +924,7 @@ function Dashboard() {
 
               <span className="status-dot" />
 
-              {loadingAI
-                ? "AI ANALYZING"
-                : "SYSTEM ONLINE"}
+              SYSTEM ONLINE
 
             </div>
 
@@ -777,7 +939,6 @@ function Dashboard() {
 
           <div className="dashboard-grid">
 
-
             <RiskDashboard
               event={currentEvent}
               risk={member2Data}
@@ -785,8 +946,8 @@ function Dashboard() {
 
 
             <EventPanel
-              event={currentEvent}
-              risk={member2Data}
+              member1={currentEvent}
+              member2={member2Data}
             />
 
           </div>
@@ -798,10 +959,14 @@ function Dashboard() {
             ALERTS
         ================================================= */}
 
-        <section className="dashboard-section">
+        <section
+          className="dashboard-section"
+          id="alerts"
+        >
 
           <AlertsPanel
-            alerts={alerts}
+            member1={currentEvent}
+            member2={member2Data}
           />
 
         </section>
@@ -824,7 +989,10 @@ function Dashboard() {
             AI EXPLAINABILITY
         ================================================= */}
 
-        <section className="dashboard-section">
+        <section
+          className="dashboard-section"
+          id="risk-intelligence"
+        >
 
           <div className="section-heading">
 
@@ -855,7 +1023,10 @@ function Dashboard() {
             CITIZEN REPORT
         ================================================= */}
 
-        <section className="dashboard-section">
+        <section
+          className="dashboard-section"
+          id="report"
+        >
 
           <CitizenReport />
 
@@ -863,7 +1034,7 @@ function Dashboard() {
 
 
         {/* =================================================
-            EVENT PASSPORT — REAL MEMBER 1 + MEMBER 2 DATA
+            EVENT PASSPORT
         ================================================= */}
 
         <section className="dashboard-section">
@@ -879,7 +1050,6 @@ function Dashboard() {
       </main>
 
     </div>
-
   )
 }
 
