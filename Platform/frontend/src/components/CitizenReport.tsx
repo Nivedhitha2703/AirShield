@@ -8,24 +8,39 @@ function CitizenReport() {
   const [image, setImage] = useState<File | undefined>()
   const [status, setStatus] = useState("")
 
+  const [analysisResult, setAnalysisResult] = useState<{
+    success: boolean
+    image?: string
+    brightness?: number
+    contrast?: number
+    saturation?: number
+    haze_level?: string
+    visual_score?: number
+    visual_assessment?: string
+  } | null>(null)
+
   async function handleSubmit(
     event: React.FormEvent<HTMLFormElement>
   ) {
     event.preventDefault()
 
     setStatus("Submitting report...")
+    setAnalysisResult(null)
 
     try {
-      await submitCitizenReport({
+      const result = await submitCitizenReport({
         pollutionType,
         location,
         description,
         image,
       })
 
-      setStatus(
-        "Report received successfully."
-      )
+      if (image && result) {
+        setAnalysisResult(result)
+        setStatus("Report and photo analysis completed successfully.")
+      } else {
+        setStatus("Report received successfully.")
+      }
 
       setPollutionType("")
       setLocation("")
@@ -259,6 +274,129 @@ function CitizenReport() {
           </div>
 
         </form>
+
+
+        {/* AI ANALYSIS RESULT */}
+
+        {analysisResult && (
+          <div className="citizen-analysis-result">
+
+            <div className="analysis-result-header">
+
+              <div>
+                <span className="section-kicker">
+                  AI PHOTO ANALYSIS
+                </span>
+
+                <h3>
+                  Pollution Visual Assessment
+                </h3>
+              </div>
+
+              <div className="analysis-success">
+                ✓ ANALYZED
+              </div>
+
+            </div>
+
+
+            <div className="analysis-main">
+
+              <div className="analysis-score">
+
+                <span>
+                  VISUAL SCORE
+                </span>
+
+                <strong>
+                  {analysisResult.visual_score ?? "—"}
+                </strong>
+
+                <small>
+                  / 100
+                </small>
+
+              </div>
+
+
+              <div className="analysis-assessment">
+
+                <span>
+                  ASSESSMENT
+                </span>
+
+                <strong>
+                  {analysisResult.visual_assessment
+                    ?.replaceAll("_", " ")
+                    ?? "Unavailable"}
+                </strong>
+
+              </div>
+
+
+              <div className="analysis-haze">
+
+                <span>
+                  HAZE LEVEL
+                </span>
+
+                <strong>
+                  {analysisResult.haze_level
+                    ?? "Unavailable"}
+                </strong>
+
+              </div>
+
+            </div>
+
+
+            <div className="analysis-details">
+
+              <div>
+                <span>
+                  Brightness
+                </span>
+
+                <strong>
+                  {analysisResult.brightness?.toFixed(2)
+                    ?? "—"}
+                </strong>
+              </div>
+
+              <div>
+                <span>
+                  Contrast
+                </span>
+
+                <strong>
+                  {analysisResult.contrast?.toFixed(2)
+                    ?? "—"}
+                </strong>
+              </div>
+
+              <div>
+                <span>
+                  Saturation
+                </span>
+
+                <strong>
+                  {analysisResult.saturation?.toFixed(2)
+                    ?? "—"}
+                </strong>
+              </div>
+
+            </div>
+
+
+            <p className="analysis-note">
+              This assessment is generated from visual
+              characteristics of the uploaded image.
+              It is an environmental visual indicator,
+              not a laboratory measurement of air quality.
+            </p>
+
+          </div>
+        )}
 
       </div>
 
