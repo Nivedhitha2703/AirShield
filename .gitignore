@@ -14,22 +14,3 @@ env/
 
 .DS_Store
 Thumbs.db
-
-member1/data/uploads/
-
-# Logs
-*.log
-
-# Python tools
-.pytest_cache/
-.mypy_cache/
-
-# Jupyter
-.ipynb_checkpoints/
-
-# Temporary files
-*.tmp
-*.temp
-
-# Large datasets
-ml/forecasting/data/*.zip
