@@ -19,31 +19,6 @@ const MEMBER2_API_URL =
 
 
 // =====================================================
-// GOOGLE AI SUPPORTED LANGUAGES
-// =====================================================
-
-export type SupportedLanguage =
-  | "English"
-  | "Tamil"
-  | "Hindi"
-
-
-// =====================================================
-// GOOGLE AI RESPONSE
-// =====================================================
-
-export interface AIInsightResponse {
-
-  language:
-    SupportedLanguage
-
-  ai_insight:
-    string
-
-}
-
-
-// =====================================================
 // MEMBER 1 RESPONSE
 // =====================================================
 
@@ -779,76 +754,6 @@ export async function analyzePollutionEvent(
 
   }
 
-}
-
-
-// =====================================================
-// GOOGLE GEMINI AI INSIGHT
-// =====================================================
-//
-// This is an ADDITIONAL feature.
-//
-// It does NOT replace or modify the existing
-// Member 2 pollution analysis.
-//
-// =====================================================
-
-export async function generateAIInsight(
-  analysisResult: Member2AIResponse,
-  language: SupportedLanguage = "English"
-): Promise<AIInsightResponse> {
-
-  console.log(
-    "Requesting Google Gemini AI insight:",
-    {
-      language,
-      analysisResult,
-    }
-  )
-
-  const response = await fetch(
-    `${MEMBER2_API_URL}/api/airshield/ai-insight`,
-    {
-      method: "POST",
-
-      headers: {
-        "Content-Type": "application/json",
-      },
-
-      body: JSON.stringify({
-        analysis_result:
-          analysisResult,
-
-        language:
-          language,
-      }),
-
-      signal:
-        AbortSignal.timeout(30000),
-    }
-  )
-
-  if (!response.ok) {
-
-    const errorText =
-      await response.text()
-
-    throw new Error(
-      `Google AI insight request failed (${response.status}): ${errorText}`
-    )
-
-  }
-
-  const data:
-    AIInsightResponse =
-      await response.json()
-
-  console.log(
-    "GOOGLE GEMINI AI INSIGHT:",
-    data
-  )
-
-  return data
 }
 
 
