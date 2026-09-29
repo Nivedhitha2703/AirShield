@@ -4,7 +4,12 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
 from ml.integration.airshield_ai import AirShieldAI
+from api.gemini_service import generate_ai_insight
 
+
+# =========================================================
+# FASTAPI APPLICATION
+# =========================================================
 
 app = FastAPI(
     title="AirShield AI API",
@@ -13,27 +18,36 @@ app = FastAPI(
 )
 
 
-# ---------------------------------------------------------
-# Request Models
-# ---------------------------------------------------------
+# =========================================================
+# AIR QUALITY EVENT MODEL
+# =========================================================
 
 class AirQualityEvent(BaseModel):
     event_id: str = "AS-DEMO-001"
 
     latitude: float
     longitude: float
-
     pm25: float
 
     DEWP: float = 18.0
     TEMP: float = 30.0
     PRES: float = 1005.0
+
     Iws: float = 12.0
     Is: float = 0.0
     Ir: float = 0.0
 
-    hour: int = Field(default=14, ge=0, le=23)
-    month: int = Field(default=9, ge=1, le=12)
+    hour: int = Field(
+        default=14,
+        ge=0,
+        le=23
+    )
+
+    month: int = Field(
+        default=9,
+        ge=1,
+        le=12
+    )
 
     wind_direction: str = "NW"
     wind_speed: float = 12.0
@@ -43,44 +57,68 @@ class AirQualityEvent(BaseModel):
     interval_minutes: int = 15
 
 
+# =========================================================
+# EXISTING AIRSHIELD ANALYSIS REQUEST
+# =========================================================
+
 class AnalyzeRequest(BaseModel):
     event: AirQualityEvent
 
     population_density: float = 5000.0
 
     schools: List[dict] = []
+
     hospitals: List[dict] = []
 
 
-# ---------------------------------------------------------
-# AI Engine
-# ---------------------------------------------------------
+# =========================================================
+# NEW GOOGLE GEMINI AI INSIGHT REQUEST
+# =========================================================
+
+class AIInsightRequest(BaseModel):
+    analysis_result: dict
+
+    language: str = "English"
+
+
+# =========================================================
+# AI ENGINE
+# =========================================================
 
 ai_engine: Optional[AirShieldAI] = None
 
 
+# =========================================================
+# STARTUP
+# =========================================================
+
 @app.on_event("startup")
 def startup_event():
     global ai_engine
+
     ai_engine = AirShieldAI()
 
 
-# ---------------------------------------------------------
-# Health Check
-# ---------------------------------------------------------
+# =========================================================
+# HEALTH CHECK
+# =========================================================
 
 @app.get("/health")
 def health():
     return {
         "status": "ok",
         "service": "AirShield AI API",
-        "ai_engine": "READY" if ai_engine is not None else "NOT_READY",
+        "ai_engine": (
+            "READY"
+            if ai_engine is not None
+            else "NOT_READY"
+        ),
     }
 
 
-# ---------------------------------------------------------
-# Root
-# ---------------------------------------------------------
+# =========================================================
+# ROOT ENDPOINT
+# =========================================================
 
 @app.get("/")
 def root():
@@ -93,9 +131,15 @@ def root():
     }
 
 
-# ---------------------------------------------------------
-# Main AirShield Analysis
-# ---------------------------------------------------------
+# =========================================================
+# EXISTING AIRSHIELD ML ANALYSIS
+# =========================================================
+#
+# IMPORTANT:
+# This is your ORIGINAL analysis endpoint.
+# Do not modify the existing ML output.
+#
+# =========================================================
 
 @app.post("/api/airshield/analyze")
 def analyze_air_quality(request: AnalyzeRequest):
@@ -107,11 +151,24 @@ def analyze_air_quality(request: AnalyzeRequest):
         )
 
     try:
+
+        # -------------------------------------------------
+        # Convert request event to dictionary
+        # -------------------------------------------------
+
         event = request.event.model_dump()
+
+        # -------------------------------------------------
+        # Population information
+        # -------------------------------------------------
 
         population = {
             "density": request.population_density
         }
+
+        # -------------------------------------------------
+        # Existing AirShield ML analysis
+        # -------------------------------------------------
 
         result = ai_engine.analyze(
             event=event,
@@ -120,20 +177,72 @@ def analyze_air_quality(request: AnalyzeRequest):
             hospitals=request.hospitals,
         )
 
+        # -------------------------------------------------
+        # IMPORTANT:
+        # Return the existing result exactly as before.
+        # -------------------------------------------------
+
         return result
 
     except Exception as exc:
+
         raise HTTPException(
             status_code=500,
             detail=str(exc)
         )
 
 
-# ---------------------------------------------------------
-# Run directly
-# ---------------------------------------------------------
+# =========================================================
+# GOOGLE GEMINI AI INSIGHT
+# =========================================================
+#
+# This is an ADDITIONAL feature.
+#
+# It does NOT modify the existing ML result.
+#
+# Supported languages:
+#   English
+#   Tamil
+#   Hindi
+#
+# =========================================================
+
+@app.post("/api/airshield/ai-insight")
+def generate_airshield_ai_insight(
+    request: AIInsightRequest
+):
+
+    try:
+
+        # -------------------------------------------------
+        # Send the existing AirShield ML result to Gemini
+        # -------------------------------------------------
+
+        result = generate_ai_insight(
+            analysis_result=request.analysis_result,
+            language=request.language,
+        )
+
+        # -------------------------------------------------
+        # Return Gemini's additional interpretation
+        # -------------------------------------------------
+
+        return result
+
+    except Exception as exc:
+
+        raise HTTPException(
+            status_code=500,
+            detail=str(exc)
+        )
+
+
+# =========================================================
+# RUN SERVER
+# =========================================================
 
 if __name__ == "__main__":
+
     import uvicorn
 
     uvicorn.run(
