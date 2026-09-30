@@ -1,3 +1,4 @@
+
 import type {
   CitizenReportData,
   Member1Event,
@@ -44,16 +45,20 @@ export async function getMember1Events(): Promise<Member1EventsResponse> {
     )
 
     const response = await fetch(
-      `${MEMBER1_API_URL}/events`,
+      MEMBER1_API_URL + "/events",
       {
         signal: AbortSignal.timeout(3000),
       }
     )
 
     if (!response.ok) {
+
       throw new Error(
-        `Member 1 request failed (${response.status})`
+        "Member 1 request failed (" +
+        response.status +
+        ")"
       )
+
     }
 
     const data: Member1EventsResponse =
@@ -73,61 +78,80 @@ export async function getMember1Events(): Promise<Member1EventsResponse> {
       error
     )
 
-    // =================================================
-    // MEMBER 1 FALLBACK EVENT
-    // =================================================
-
     const fallbackEvent: Member1Event = {
 
-      event_id: "EVT-0001",
+      event_id:
+        "EVT-0001",
 
-      timestamp: "2026-09-26 15:00:00",
+      timestamp:
+        "2026-09-26 15:00:00",
 
-      sensor_id: "S1",
+      sensor_id:
+        "S1",
 
-      latitude: 10.95115995265754,
+      latitude:
+        10.95115995265754,
 
-      longitude: 76.87363296552432,
+      longitude:
+        76.87363296552432,
 
-      location: "10.95116, 76.87363",
+      location:
+        "10.95116, 76.87363",
 
-      pm25: 151.83070948843832,
+      pm25:
+        151.83070948843832,
 
-      pm10: 282.42924024055054,
+      pm10:
+        282.42924024055054,
 
-      no2: 72.07022777838449,
+      no2:
+        72.07022777838449,
 
-      so2: 18.663200386077897,
+      so2:
+        18.663200386077897,
 
-      co: 0.816365871709513,
+      co:
+        0.816365871709513,
 
-      aqi: 190.61165523600687,
+      aqi:
+        190.61165523600687,
 
-      temperature: 36.1684398102715,
+      temperature:
+        36.1684398102715,
 
-      humidity: 66.26379579546412,
+      humidity:
+        66.26379579546412,
 
-      wind_speed: 12.69149085768762,
+      wind_speed:
+        12.69149085768762,
 
-      wind_direction: 44.25144424753952,
+      wind_direction:
+        44.25144424753952,
 
-      event_type: "PM2.5 POLLUTION",
+      event_type:
+        "PM2.5 POLLUTION",
 
-      risk_level: "CRITICAL",
+      risk_level:
+        "CRITICAL",
 
-      anomaly_score: -0.0369776375251218,
+      anomaly_score:
+        -0.0369776375251218,
 
     }
 
     return {
 
-      total_events: 1,
+      total_events:
+        1,
 
-      critical: 1,
+      critical:
+        1,
 
-      high: 0,
+      high:
+        0,
 
-      moderate: 0,
+      moderate:
+        0,
 
       data: [
         fallbackEvent,
@@ -148,7 +172,8 @@ export async function analyzePollutionImage(
   image: File
 ) {
 
-  const formData = new FormData()
+  const formData =
+    new FormData()
 
   formData.append(
     "file",
@@ -156,11 +181,16 @@ export async function analyzePollutionImage(
   )
 
   const response = await fetch(
-    `${MEMBER1_API_URL}/analyze-image`,
+    MEMBER1_API_URL + "/analyze-image",
     {
-      method: "POST",
-      body: formData,
-      signal: AbortSignal.timeout(10000),
+      method:
+        "POST",
+
+      body:
+        formData,
+
+      signal:
+        AbortSignal.timeout(10000),
     }
   )
 
@@ -170,7 +200,10 @@ export async function analyzePollutionImage(
       await response.text()
 
     throw new Error(
-      `Image analysis failed (${response.status}): ${errorText}`
+      "Image analysis failed (" +
+      response.status +
+      "): " +
+      errorText
     )
 
   }
@@ -186,34 +219,37 @@ export async function analyzePollutionImage(
 
 interface Member2APIResponse {
 
-  event_id: string
+  event_id:
+    string
 
-  prediction: {
+  risk:
+    string
 
-    predicted_pm25: number
+  risk_score:
+    number
 
-    forecast_horizon: string
+  predicted_pm25:
+    number
 
-    risk_level: string
+  forecast_horizon:
+    string
 
-    risk_score: number
+  shap?:
+    Record<string, number>
 
-  }
+  probable_source?:
+    string
 
-  explainability: {
+  source_confidence?:
+    number
 
-    method: string
+  source_analysis?: {
 
-    feature_contributions:
-      Record<string, number>
+    probable_source:
+      string
 
-  }
-
-  source_analysis: {
-
-    probable_source: string
-
-    source_confidence: number
+    source_confidence:
+      number
 
     source_scores:
       Record<string, number>
@@ -223,43 +259,60 @@ interface Member2APIResponse {
 
   }
 
-  trajectory: {
+  source_scores?:
+    Record<string, number>
 
-    latitude: number
+  trajectory?: {
 
-    longitude: number
+    latitude:
+      number
 
-    time_minutes: number
+    longitude:
+      number
 
-  }[]
-
-  plume: {
-
-    latitude: number
-
-    longitude: number
-
-    time_minutes: number
-
-    distance_from_source_km: number
-
-    estimated_width_km: number
+    time_minutes:
+      number
 
   }[]
 
-  exposure: {
+  plume?: {
 
-    exposure_level: string
+    latitude:
+      number
 
-    estimated_exposed_population: number
+    longitude:
+      number
 
-    affected_schools: unknown[]
+    time_minutes:
+      number
 
-    affected_hospitals: unknown[]
+    distance_from_source_km:
+      number
 
-    school_count: number
+    estimated_width_km:
+      number
 
-    hospital_count: number
+  }[]
+
+  exposure?: {
+
+    exposure_level:
+      string
+
+    estimated_exposed_population:
+      number
+
+    affected_schools:
+      unknown[]
+
+    affected_hospitals:
+      unknown[]
+
+    school_count:
+      number
+
+    hospital_count:
+      number
 
   }
 
@@ -281,37 +334,73 @@ export async function analyzePollutionEvent(
 
   try {
 
-    // =================================================
-    // TRY REAL MEMBER 2 API
-    // =================================================
-
     const response = await fetch(
-      `${MEMBER2_API_URL}/analyze`,
+      MEMBER2_API_URL +
+      "/api/airshield/analyze",
       {
-        method: "POST",
+        method:
+          "POST",
 
         headers: {
-          "Content-Type": "application/json",
+          "Content-Type":
+            "application/json",
         },
 
-        body: JSON.stringify({
-          event,
-        }),
+        body:
+          JSON.stringify({
 
-        signal: AbortSignal.timeout(5000),
+            event: {
+
+              event_id:
+                event.event_id,
+
+              latitude:
+                event.latitude,
+
+              longitude:
+                event.longitude,
+
+              pm25:
+                event.pm25,
+
+              wind_speed:
+                event.wind_speed,
+
+              wind_direction:
+                "NW",
+
+              wind_direction_degrees:
+                event.wind_direction,
+
+              TEMP:
+                event.temperature,
+
+            },
+
+          }),
+
+        signal:
+          AbortSignal.timeout(60000),
       }
     )
 
     if (!response.ok) {
 
+      const errorText =
+        await response.text()
+
       throw new Error(
-        `Member 2 request failed (${response.status})`
+        "Member 2 request failed (" +
+        response.status +
+        "): " +
+        errorText
       )
 
     }
 
-    const data: Member2APIResponse =
-      await response.json()
+    const data:
+      Member2APIResponse =
+        await response.json()
 
     console.log(
       "REAL MEMBER 2 RESPONSE:",
@@ -324,58 +413,72 @@ export async function analyzePollutionEvent(
         data.event_id,
 
       risk:
-        data.prediction.risk_level,
+        data.risk,
 
       risk_score:
-        data.prediction.risk_score,
+        data.risk_score,
 
       predicted_pm25:
-        data.prediction.predicted_pm25,
+        data.predicted_pm25,
 
       forecast_horizon:
-        data.prediction.forecast_horizon,
+        data.forecast_horizon,
 
       shap:
-        data.explainability.feature_contributions,
+        data.shap ?? {},
 
       probable_source:
-        data.source_analysis.probable_source,
+        data.source_analysis?.probable_source ??
+        data.probable_source ??
+        "UNKNOWN",
 
       source_confidence:
-        data.source_analysis.source_confidence,
+        data.source_analysis?.source_confidence ??
+        data.source_confidence ??
+        0,
 
       source_scores:
-        data.source_analysis.source_scores,
+        data.source_analysis?.source_scores ??
+        data.source_scores ??
+        {},
 
       trajectory:
-        data.trajectory,
+        data.trajectory ?? [],
 
       plume:
-        data.plume,
+        data.plume ?? [],
 
       exposure:
-        data.exposure,
+        data.exposure ?? {
+
+          exposure_level:
+            "UNKNOWN",
+
+          estimated_exposed_population:
+            0,
+
+          affected_schools:
+            [],
+
+          affected_hospitals:
+            [],
+
+          school_count:
+            0,
+
+          hospital_count:
+            0,
+
+        },
 
     }
 
   } catch (error) {
 
-    // =================================================
-    // MEMBER 2 FALLBACK
-    // =================================================
-
     console.warn(
       "Member 2 unavailable. Using prototype AI result.",
       error
     )
-
-    /*
-      Prototype fallback.
-
-      This uses the finalized Member 2 response structure
-      so the complete AirShield dashboard can run without
-      Member 2's local terminal.
-    */
 
     return {
 
@@ -468,265 +571,11 @@ export async function analyzePollutionEvent(
 
       },
 
-      trajectory: [
-
-        {
-          latitude:
-            event.latitude,
-
-          longitude:
-            event.longitude,
-
-          time_minutes:
-            0,
-        },
-
-        {
-          latitude:
-            event.latitude + 0.012263,
-
-          longitude:
-            event.longitude + 0.012169,
-
-          time_minutes:
-            15,
-        },
-
-        {
-          latitude:
-            event.latitude + 0.024526,
-
-          longitude:
-            event.longitude + 0.024338,
-
-          time_minutes:
-            30,
-        },
-
-        {
-          latitude:
-            event.latitude + 0.036789,
-
-          longitude:
-            event.longitude + 0.036509,
-
-          time_minutes:
-            45,
-        },
-
-        {
-          latitude:
-            event.latitude + 0.049052,
-
-          longitude:
-            event.longitude + 0.048680,
-
-          time_minutes:
-            60,
-        },
-
-        {
-          latitude:
-            event.latitude + 0.061315,
-
-          longitude:
-            event.longitude + 0.060850,
-
-          time_minutes:
-            75,
-        },
-
-        {
-          latitude:
-            event.latitude + 0.073578,
-
-          longitude:
-            event.longitude + 0.073022,
-
-          time_minutes:
-            90,
-        },
-
-        {
-          latitude:
-            event.latitude + 0.085841,
-
-          longitude:
-            event.longitude + 0.085194,
-
-          time_minutes:
-            105,
-        },
-
-        {
-          latitude:
-            event.latitude + 0.098104,
-
-          longitude:
-            event.longitude + 0.097366,
-
-          time_minutes:
-            120,
-        },
-
-      ],
-
-      plume: [
-
-        {
-          latitude:
-            event.latitude,
-
-          longitude:
-            event.longitude,
-
-          time_minutes:
-            0,
-
-          distance_from_source_km:
-            0,
-
-          estimated_width_km:
-            1,
-        },
-
-        {
-          latitude:
-            event.latitude + 0.012263,
-
-          longitude:
-            event.longitude + 0.012169,
-
-          time_minutes:
-            15,
-
-          distance_from_source_km:
-            1.904,
-
-          estimated_width_km:
-            1.286,
-        },
-
-        {
-          latitude:
-            event.latitude + 0.024526,
-
-          longitude:
-            event.longitude + 0.024338,
-
-          time_minutes:
-            30,
-
-          distance_from_source_km:
-            3.807,
-
-          estimated_width_km:
-            1.571,
-        },
-
-        {
-          latitude:
-            event.latitude + 0.036789,
-
-          longitude:
-            event.longitude + 0.036509,
-
-          time_minutes:
-            45,
-
-          distance_from_source_km:
-            5.711,
-
-          estimated_width_km:
-            1.857,
-        },
-
-        {
-          latitude:
-            event.latitude + 0.049052,
-
-          longitude:
-            event.longitude + 0.048680,
-
-          time_minutes:
-            60,
-
-          distance_from_source_km:
-            7.615,
-
-          estimated_width_km:
-            2.142,
-        },
-
-        {
-          latitude:
-            event.latitude + 0.061315,
-
-          longitude:
-            event.longitude + 0.060850,
-
-          time_minutes:
-            75,
-
-          distance_from_source_km:
-            9.519,
-
-          estimated_width_km:
-            2.428,
-        },
-
-        {
-          latitude:
-            event.latitude + 0.073578,
-
-          longitude:
-            event.longitude + 0.073022,
-
-          time_minutes:
-            90,
-
-          distance_from_source_km:
-            11.422,
-
-          estimated_width_km:
-            2.713,
-        },
-
-        {
-          latitude:
-            event.latitude + 0.085841,
-
-          longitude:
-            event.longitude + 0.085194,
-
-          time_minutes:
-            105,
-
-          distance_from_source_km:
-            13.326,
-
-          estimated_width_km:
-            2.999,
-        },
-
-        {
-          latitude:
-            event.latitude + 0.098104,
-
-          longitude:
-            event.longitude + 0.097366,
-
-          time_minutes:
-            120,
-
-          distance_from_source_km:
-            15.23,
-
-          estimated_width_km:
-            3.284,
-        },
-
-      ],
+      trajectory:
+        [],
+
+      plume:
+        [],
 
       exposure: {
 
@@ -758,15 +607,109 @@ export async function analyzePollutionEvent(
 
 
 // =====================================================
+// GEMINI GENERATIVE AI
+// =====================================================
+
+export interface GeminiAIResponse {
+
+  insight:
+    string
+
+  language?:
+    string
+
+  model?:
+    string
+
+}
+
+
+export async function generateAIInsight(
+  analysisResult: Member2AIResponse,
+  language: string = "English"
+): Promise<GeminiAIResponse> {
+
+  console.log(
+    "Sending analysis to Gemini:",
+    analysisResult
+  )
+
+  try {
+
+    const response = await fetch(
+      MEMBER2_API_URL +
+      "/api/airshield/ai-insight",
+      {
+        method:
+          "POST",
+
+        headers: {
+          "Content-Type":
+            "application/json",
+        },
+
+        body:
+          JSON.stringify({
+
+            analysis_result:
+              analysisResult,
+
+            language:
+              language,
+
+          }),
+
+        signal:
+          AbortSignal.timeout(15000),
+
+      }
+    )
+
+    if (!response.ok) {
+
+      const errorText =
+        await response.text()
+
+      throw new Error(
+        "Gemini request failed (" +
+        response.status +
+        "): " +
+        errorText
+      )
+
+    }
+
+    const data =
+      await response.json()
+
+    console.log(
+      "REAL GEMINI RESPONSE:",
+      data
+    )
+
+    return data
+
+  } catch (error) {
+
+    console.error(
+      "Gemini AI unavailable:",
+      error
+    )
+
+    throw error
+
+  }
+
+}
+
+
+// =====================================================
 // CITIZEN REPORT
 // =====================================================
 
 export async function submitCitizenReport(
   report: CitizenReportData
 ) {
-
-  // If the citizen uploads an image,
-  // send it to Member 1 image analysis.
 
   if (report.image) {
 
@@ -775,8 +718,6 @@ export async function submitCitizenReport(
     )
 
   }
-
-  // Text-only report acknowledgement.
 
   return {
 
@@ -795,3 +736,4 @@ export async function submitCitizenReport(
   }
 
 }
+

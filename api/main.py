@@ -1,6 +1,7 @@
 from typing import List, Optional
 
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from ml.integration.airshield_ai import AirShieldAI
@@ -15,6 +16,16 @@ app = FastAPI(
     title="AirShield AI API",
     description="AI-powered hyperlocal pollution intelligence and climate risk analysis API.",
     version="1.0.0",
+)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+        "http://localhost:5174",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 
@@ -251,3 +262,5 @@ if __name__ == "__main__":
         port=8000,
         reload=True,
     )
+
+

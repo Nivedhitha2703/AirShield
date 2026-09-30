@@ -1,4 +1,9 @@
-import { useEffect, useState, type PointerEvent } from "react"
+
+import {
+  useEffect,
+  useState,
+  type PointerEvent,
+} from "react"
 
 import Header from "../components/Header"
 import PollutionMap from "../components/PollutionMap"
@@ -13,6 +18,7 @@ import EventPassport from "../components/EventPassport"
 import {
   analyzePollutionEvent,
   getMember1Events,
+  generateAIInsight,
 } from "../services/api"
 
 import type {
@@ -24,7 +30,7 @@ import type {
 function Dashboard() {
 
   // =====================================================
-  // MEMBER 1 SENSOR DATA
+  // MEMBER 1 STATE
   // =====================================================
 
   const [currentEvent, setCurrentEvent] =
@@ -38,7 +44,7 @@ function Dashboard() {
 
 
   // =====================================================
-  // MEMBER 2 AI STATE
+  // MEMBER 2 STATE
   // =====================================================
 
   const [member2Data, setMember2Data] =
@@ -48,6 +54,20 @@ function Dashboard() {
     useState(false)
 
   const [aiError, setAiError] =
+    useState<string | null>(null)
+
+
+  // =====================================================
+  // GEMINI STATE
+  // =====================================================
+
+  const [geminiInsight, setGeminiInsight] =
+    useState<string | null>(null)
+
+  const [loadingGemini, setLoadingGemini] =
+    useState(false)
+
+  const [geminiError, setGeminiError] =
     useState<string | null>(null)
 
 
@@ -73,14 +93,16 @@ function Dashboard() {
           !result.data ||
           result.data.length === 0
         ) {
+
           throw new Error(
             "Member 1 returned no pollution events."
           )
+
         }
 
-        // Use the first real Member 1 event
-        // for the initial dashboard view.
-        setCurrentEvent(result.data[0])
+        setCurrentEvent(
+          result.data[0]
+        )
 
       })
 
@@ -109,7 +131,7 @@ function Dashboard() {
 
 
   // =====================================================
-  // SEND MEMBER 1 EVENT → MEMBER 2 AI
+  // MEMBER 1 → MEMBER 2 → GEMINI
   // =====================================================
 
   useEffect(() => {
@@ -122,25 +144,71 @@ function Dashboard() {
     setAiError(null)
     setMember2Data(null)
 
-    /*
-      FINAL MEMBER 1 → MEMBER 2 INTEGRATION
+    setLoadingGemini(false)
+    setGeminiError(null)
+    setGeminiInsight(null)
 
-      Member 2 now accepts the complete Member 1
-      event object directly.
 
-      No transformation is required here.
-    */
+    // ===================================================
+    // MEMBER 2 ML ANALYSIS
+    // ===================================================
 
     analyzePollutionEvent(currentEvent)
 
-      .then((result) => {
+      .then(async (result) => {
 
         console.log(
           "REAL MEMBER 2 AI RESPONSE:",
           result
         )
 
-        setMember2Data(result)
+        setMember2Data(
+          result
+        )
+
+
+        // ===============================================
+        // GEMINI GENERATIVE AI
+        // ===============================================
+
+        setLoadingGemini(true)
+        setGeminiError(null)
+
+        try {
+
+          const geminiResult =
+            await generateAIInsight(
+              result,
+              "English"
+            )
+
+          console.log(
+            "REAL GEMINI AI RESPONSE:",
+            geminiResult
+          )
+
+          setGeminiInsight(
+            geminiResult.insight
+          )
+
+        } catch (error) {
+
+          console.error(
+            "Gemini AI error:",
+            error
+          )
+
+          setGeminiError(
+            error instanceof Error
+              ? error.message
+              : "Unable to generate Gemini AI insight."
+          )
+
+        } finally {
+
+          setLoadingGemini(false)
+
+        }
 
       })
 
@@ -183,24 +251,27 @@ function Dashboard() {
       hero.getBoundingClientRect()
 
     const x =
-      event.clientX - rect.left
+      event.clientX -
+      rect.left
 
     const y =
-      event.clientY - rect.top
+      event.clientY -
+      rect.top
 
     hero.style.setProperty(
       "--pointer-x",
-      `${x}px`
+      x + "px"
     )
 
     hero.style.setProperty(
       "--pointer-y",
-      `${y}px`
+      y + "px"
     )
 
     hero.classList.add(
       "hero-pointer-active"
     )
+
   }
 
 
@@ -222,6 +293,7 @@ function Dashboard() {
   if (loadingEvents) {
 
     return (
+
       <div className="app-shell">
 
         <Header />
@@ -268,17 +340,20 @@ function Dashboard() {
         </main>
 
       </div>
+
     )
+
   }
 
 
   // =====================================================
-  // MEMBER 1 CONNECTION ERROR
+  // MEMBER 1 ERROR
   // =====================================================
 
   if (eventsError || !currentEvent) {
 
     return (
+
       <div className="app-shell">
 
         <Header />
@@ -314,8 +389,10 @@ function Dashboard() {
             <div className="card">
 
               <p>
+
                 {eventsError ||
                   "No pollution event was returned by Member 1."}
+
               </p>
 
             </div>
@@ -325,7 +402,9 @@ function Dashboard() {
         </main>
 
       </div>
+
     )
+
   }
 
 
@@ -336,6 +415,7 @@ function Dashboard() {
   if (loadingAI || !member2Data) {
 
     return (
+
       <div className="app-shell">
 
         <Header />
@@ -357,8 +437,9 @@ function Dashboard() {
                 </h2>
 
                 <p>
-                  Member 1 event detected. Sending
-                  environmental data to the AI risk engine.
+                  Member 1 event detected.
+                  Sending environmental data
+                  to the AI risk engine.
                 </p>
 
               </div>
@@ -376,14 +457,20 @@ function Dashboard() {
             <div className="card">
 
               {aiError ? (
+
                 <p>
-                  AI connection issue: {aiError}
+                  AI connection issue:
+                  {" "}
+                  {aiError}
                 </p>
+
               ) : (
+
                 <p>
                   Connecting to the AirShield AI
                   risk intelligence service...
                 </p>
+
               )}
 
             </div>
@@ -393,7 +480,9 @@ function Dashboard() {
         </main>
 
       </div>
+
     )
+
   }
 
 
@@ -414,12 +503,15 @@ function Dashboard() {
 
       <section
         className="hero-section"
-        onPointerMove={handleHeroPointerMove}
-        onPointerLeave={handleHeroPointerLeave}
+        onPointerMove={
+          handleHeroPointerMove
+        }
+        onPointerLeave={
+          handleHeroPointerLeave
+        }
       >
 
         <div className="hero-interaction-layer" />
-
 
         <div className="hero-particles">
 
@@ -438,18 +530,14 @@ function Dashboard() {
 
         </div>
 
-
         <div className="hero-grid" />
-
 
         <div className="hero-glow glow-one" />
         <div className="hero-glow glow-two" />
         <div className="hero-glow glow-three" />
 
 
-        {/* =================================================
-            LEFT CONTENT
-        ================================================= */}
+        {/* LEFT CONTENT */}
 
         <div className="hero-content">
 
@@ -461,16 +549,13 @@ function Dashboard() {
 
           </span>
 
-
           <h1>
             Air<span>Shield</span>
           </h1>
 
-
           <h2>
             Detect. Predict. Protect.
           </h2>
-
 
           <p className="hero-description">
 
@@ -488,10 +573,14 @@ function Dashboard() {
 
               <span>◉</span>
 
-              <small>AQI</small>
+              <small>
+                AQI
+              </small>
 
               <strong>
-                {Math.round(currentEvent.aqi)}
+                {Math.round(
+                  currentEvent.aqi
+                )}
               </strong>
 
               <em>
@@ -505,7 +594,9 @@ function Dashboard() {
 
               <span>◈</span>
 
-              <small>PM2.5</small>
+              <small>
+                PM2.5
+              </small>
 
               <strong>
                 {currentEvent.pm25.toFixed(1)}
@@ -522,7 +613,9 @@ function Dashboard() {
 
               <span>◇</span>
 
-              <small>PM10</small>
+              <small>
+                PM10
+              </small>
 
               <strong>
                 {currentEvent.pm10.toFixed(1)}
@@ -539,7 +632,9 @@ function Dashboard() {
 
               <span>△</span>
 
-              <small>RISK</small>
+              <small>
+                RISK
+              </small>
 
               <strong>
                 {member2Data.risk}
@@ -570,18 +665,19 @@ function Dashboard() {
 
               </strong>
 
-
               <div className="confidence-line">
 
                 <div
                   style={{
-                    width: `${Math.max(
-                      0,
-                      Math.min(
-                        member2Data.source_confidence * 100,
-                        100
-                      )
-                    )}%`,
+                    width:
+                      Math.max(
+                        0,
+                        Math.min(
+                          member2Data.source_confidence *
+                          100,
+                          100
+                        )
+                      ) + "%",
                   }}
                 />
 
@@ -604,11 +700,9 @@ function Dashboard() {
 
             </div>
 
-
             <div className="flow-arrow">
               →
             </div>
-
 
             <div className="flow-item">
 
@@ -618,11 +712,9 @@ function Dashboard() {
 
             </div>
 
-
             <div className="flow-arrow">
               →
             </div>
-
 
             <div className="flow-item">
 
@@ -650,9 +742,7 @@ function Dashboard() {
         </div>
 
 
-        {/* =================================================
-            RADAR / ATMOSPHERIC VISUAL
-        ================================================= */}
+        {/* RADAR */}
 
         <div className="hero-radar-zone">
 
@@ -678,10 +768,10 @@ function Dashboard() {
 
             </div>
 
-
             <div className="radar-label">
 
               AIRSHIELD
+
               <br />
 
               <span>
@@ -811,7 +901,6 @@ function Dashboard() {
 
           </div>
 
-
           <div className="floating-data data-two">
 
             <span />
@@ -819,7 +908,6 @@ function Dashboard() {
             POLLUTION DETECTED
 
           </div>
-
 
           <div className="floating-data data-three">
 
@@ -842,10 +930,10 @@ function Dashboard() {
 
           </div>
 
-
           <div className="wind-label">
 
             ≋ WIND FLOW
+
             <br />
 
             <strong>
@@ -870,13 +958,11 @@ function Dashboard() {
 
           </div>
 
-
           <div>
 
             ● {currentEvent.event_type}
 
           </div>
-
 
           <div>
 
@@ -896,9 +982,7 @@ function Dashboard() {
       <main className="dashboard-content">
 
 
-        {/* =================================================
-            POLLUTION INTELLIGENCE
-        ================================================= */}
+        {/* POLLUTION INTELLIGENCE */}
 
         <section
           className="dashboard-section"
@@ -918,7 +1002,6 @@ function Dashboard() {
               </h2>
 
             </div>
-
 
             <div className="status-indicator">
 
@@ -944,7 +1027,6 @@ function Dashboard() {
               risk={member2Data}
             />
 
-
             <EventPanel
               member1={currentEvent}
               member2={member2Data}
@@ -955,9 +1037,7 @@ function Dashboard() {
         </section>
 
 
-        {/* =================================================
-            ALERTS
-        ================================================= */}
+        {/* ALERTS */}
 
         <section
           className="dashboard-section"
@@ -972,9 +1052,7 @@ function Dashboard() {
         </section>
 
 
-        {/* =================================================
-            RESPONSE
-        ================================================= */}
+        {/* RESPONSE */}
 
         <section className="dashboard-section">
 
@@ -985,9 +1063,7 @@ function Dashboard() {
         </section>
 
 
-        {/* =================================================
-            AI EXPLAINABILITY
-        ================================================= */}
+        {/* AI EXPLAINABILITY */}
 
         <section
           className="dashboard-section"
@@ -1020,8 +1096,95 @@ function Dashboard() {
 
 
         {/* =================================================
-            CITIZEN REPORT
+            GENERATIVE AI INSIGHT
         ================================================= */}
+
+        <section
+          className="dashboard-section"
+          id="ai-insight"
+        >
+
+          <div className="section-heading">
+
+            <div>
+
+              <span className="section-kicker">
+                GENERATIVE AI
+              </span>
+
+              <h2>
+                AI Environmental Insight
+              </h2>
+
+              <p>
+                Gemini-generated intelligence based
+                on the AirShield pollution analysis.
+              </p>
+
+            </div>
+
+            <div className="status-indicator">
+
+              <span className="status-dot" />
+
+              {loadingGemini
+                ? "GENERATING"
+                : geminiInsight
+                  ? "GEMINI ACTIVE"
+                  : "WAITING"}
+
+            </div>
+
+          </div>
+
+
+          <div className="card">
+
+            {loadingGemini && (
+
+              <p>
+                Gemini is generating an environmental
+                intelligence report...
+              </p>
+
+            )}
+
+
+            {geminiError && (
+
+              <p>
+                Gemini connection issue:
+                {" "}
+                {geminiError}
+              </p>
+
+            )}
+
+
+            {!loadingGemini &&
+              !geminiError &&
+              geminiInsight && (
+
+                <div>
+
+                  <strong>
+                    AirShield Generative AI Insight
+                  </strong>
+
+                  <p>
+                    {geminiInsight}
+                  </p>
+
+                </div>
+
+              )}
+
+          </div>
+
+        </section>
+
+
+        {/* CITIZEN REPORT */}
 
         <section
           className="dashboard-section"
@@ -1033,9 +1196,7 @@ function Dashboard() {
         </section>
 
 
-        {/* =================================================
-            EVENT PASSPORT
-        ================================================= */}
+        {/* EVENT PASSPORT */}
 
         <section className="dashboard-section">
 
@@ -1050,8 +1211,11 @@ function Dashboard() {
       </main>
 
     </div>
+
   )
+
 }
 
 
 export default Dashboard
+
